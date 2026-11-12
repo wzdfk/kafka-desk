@@ -5,6 +5,7 @@ import { debounce, readJson, storageKeys, writeJson } from '../utils/storage.js'
 import { toast } from '../utils/toast.js';
 import { useServersStore } from './servers.js';
 import { useMessagesStore } from './messages.js';
+import { useAutomationStore } from './automation.js';
 
 export const CFG_SEC_DEFAULTS = { topic: true, misc: true, log: false };
 const RUN_LOG_MAX = 200;
@@ -139,6 +140,9 @@ export const useActiveStore = defineStore('active', () => {
     lastReceipt.value = null;
     restoreDraft(id);
     await useMessagesStore().setServer(id);
+    const auto = useAutomationStore();
+    if (auto.running) auto.stop('已切换服务器，自动化发送已停止', true);
+    auto.loadSettings(id);
     if (id) await loadCatalog(id, false);
   }
 

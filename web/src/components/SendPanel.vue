@@ -1,12 +1,17 @@
 <script setup>
-import { DocumentTextOutline, SparklesOutline, TrashOutline } from '@vicons/ionicons5';
+import { ref } from 'vue';
+import { DocumentTextOutline, PlayOutline, SparklesOutline, StopCircleOutline, SyncOutline, TrashOutline } from '@vicons/ionicons5';
 import { NButton, NInput } from 'naive-ui';
 import { useActiveStore } from '../stores/active.js';
+import { useAutomationStore } from '../stores/automation.js';
+import AutoTestModal from './AutoTestModal.vue';
 import IconBtn from './IconBtn.vue';
 
 /* Send editor: JSON validation footer, byte count, draft autosave (300ms),
- * sample / format / clear, receipt of the last delivery. */
+ * sample / format / clear, receipt of the last delivery, automation trigger. */
 const store = useActiveStore();
+const auto = useAutomationStore();
+const autoShow = ref(false);
 
 const jsonClass = () => ({
   empty: 'is-empty',
@@ -25,7 +30,23 @@ function clock(ts) {
   <section class="send-panel">
     <div class="send-head">
       <span class="send-title">发送区</span>
+      <span v-if="auto.running" class="auto-chip" :class="{ paused: auto.paused }" :title="auto.statusHint">
+        {{ auto.headline }}
+      </span>
       <div class="send-tools">
+        <IconBtn
+          :icon="auto.running ? (auto.paused ? PlayOutline : SyncOutline) : PlayOutline"
+          :spin="auto.running && !auto.paused"
+          :type="auto.running ? 'success' : 'default'"
+          :title="auto.running ? (auto.paused ? '自动化发送已暂停（点此查看/继续）' : '自动化发送运行中（点此查看/暂停）') : '自动化发送设置'"
+          @click="autoShow = true"
+        />
+        <IconBtn
+          v-if="auto.running"
+          :icon="StopCircleOutline"
+          title="停止自动化发送"
+          @click="auto.stop('已手动停止')"
+        />
         <IconBtn :icon="DocumentTextOutline" title="填充示例" @click="store.loadSample()" />
         <IconBtn :icon="SparklesOutline" title="格式化 JSON" @click="store.formatPayload()" />
         <IconBtn :icon="TrashOutline" title="清空" @click="store.clearPayload()" />
@@ -71,6 +92,8 @@ function clock(ts) {
       · p{{ store.lastReceipt.partition }} @{{ store.lastReceipt.offset }}
       · {{ store.lastReceipt.bytes }} B
     </div>
+
+    <AutoTestModal v-model:show="autoShow" />
   </section>
 </template>
 
@@ -85,9 +108,19 @@ function clock(ts) {
   gap: 8px;
   min-height: 0;
 }
-.send-head { display: flex; align-items: center; justify-content: space-between; }
+.send-head { display: flex; align-items: center; gap: 10px; }
 .send-title { font-size: 13.5px; font-weight: 600; }
-.send-tools { display: flex; gap: 2px; }
+.send-tools { display: flex; gap: 2px; margin-left: auto; }
+.auto-chip {
+  font-size: 11.5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(52, 199, 89, 0.14);
+  color: #34c759;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.auto-chip.paused { background: rgba(255, 149, 0, 0.14); color: #ff9500; }
 .key-input { font-variant-numeric: tabular-nums; }
 /* textarea 填满发送区剩余高度，随 40% 基准伸缩 */
 .payload-input {
