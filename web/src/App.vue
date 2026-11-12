@@ -32,7 +32,7 @@ import TopBar from './components/TopBar.vue';
   flex: 1;
   min-height: 0;
   width: 100%;
-  max-width: 1440px;
+  /* max-width: 1440px; */
   margin: 0 auto;
   padding: 16px 24px 20px;
   box-sizing: border-box;

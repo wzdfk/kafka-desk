@@ -57,6 +57,16 @@ onBeforeUnmount(() => clearInterval(rateTimer));
 
 <template>
   <section class="receive">
+    <div class="recv-head">
+      <span class="recv-title">接收区</span>
+      <span class="recv-stats">
+        {{ store.count }} 条 · 速率 {{ rate }}/s
+        <template v-if="store.restoredCount"> · 已恢复 {{ store.restoredCount }}</template>
+        <span v-if="store.dropped" class="drop-hint"> · 已省略 {{ store.dropped }}</span>
+        <span v-if="store.paused" class="paused-hint"> · 已暂停显示（仍在接收）</span>
+      </span>
+    </div>
+
     <div class="topic-bar">
       <span v-if="!active.selectedTopics.length" class="topic-bar-empty">
         在左侧勾选主题后，这里会出现订阅按钮
@@ -126,22 +136,42 @@ onBeforeUnmount(() => clearInterval(rateTimer));
     </div>
 
     <div class="foot-info">
-      <span>{{ store.count }} 条</span>
-      <span v-if="store.restoredCount">· 已恢复 {{ store.restoredCount }}</span>
-      <span v-if="store.dropped" class="drop-hint">· 已省略 {{ store.dropped }}</span>
-      <span class="rate">速率 {{ rate }}/s</span>
+      <span>本地缓存留存 {{ store.msgs.length }} 条，重启后恢复（最多 {{ 500 }} 条）</span>
       <span v-if="store.paused" class="paused-hint">已暂停显示（仍在接收）</span>
     </div>
   </section>
 </template>
 
 <style scoped>
+/* 与发送区同款卡片外观（边框/圆角/内边距保持一致，形成对称） */
 .receive {
   display: flex;
   flex-direction: column;
   gap: 10px;
   min-height: 0;
   flex: 1;
+  box-sizing: border-box;
+  background: rgba(128, 128, 128, 0.05);
+  border: 1px solid rgba(128, 128, 128, 0.14);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: -12px;
+}
+.recv-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.recv-title { font-size: 13.5px; font-weight: 600; }
+.recv-stats {
+  font-size: 12px;
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .topic-bar {
   display: flex;

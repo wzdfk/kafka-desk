@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { NButton } from 'naive-ui';
+import { NButton, useThemeVars } from 'naive-ui';
 import { useServersStore } from '../stores/servers.js';
 import { useActiveStore } from '../stores/active.js';
 import { readJson, storageKeys, writeJson } from '../utils/storage.js';
@@ -19,6 +19,23 @@ const active = useActiveStore();
 
 const id = computed(() => String(route.params.id || ''));
 const server = computed(() => servers.byId(id.value));
+
+/* 断开按钮：warning 橙底实心，文字色随主题（暗色→白 / 亮色→黑） */
+// const themeVars = useThemeVars();
+// const disconnectStyle = computed(() => ({
+//   '--n-color': themeVars.value.warningColor,
+//   '--n-color-hover': themeVars.value.warningColor,
+//   '--n-color-pressed': themeVars.value.warningColor,
+//   '--n-color-focus': themeVars.value.warningColor,
+//   '--n-text-color': themeVars.value.textColorBase,
+//   '--n-text-color-hover': themeVars.value.textColorBase,
+//   '--n-text-color-pressed': themeVars.value.textColorBase,
+//   '--n-text-color-focus': themeVars.value.textColorBase,
+//   '--n-border-color': 'transparent',
+//   '--n-border-color-hover': 'transparent',
+//   '--n-border-color-pressed': 'transparent',
+//   '--n-border-color-focus': 'transparent',
+// }));
 
 /* ---- splitter state: left column width (px) + send area share (%) ---- */
 const saved = readJson(storageKeys.splitter, {}) || {};
@@ -89,7 +106,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey));
         </span>
       </div>
       <div class="ws-actions">
-        <n-button v-if="active.isServerUp" quaternary type="warning" @click="active.disconnect()">
+        <n-button
+          v-if="active.isServerUp"
+          type="warning"
+          round
+          title="断开当前 Broker 连接"
+          @click="active.disconnect()"
+        >
           断开
         </n-button>
         <n-button
@@ -133,8 +156,35 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey));
   gap: 16px;
   margin-bottom: 12px;
 }
-.ws-name { font-size: 19px; font-weight: 700; margin: 0; }
-.ws-brokers { font-size: 12.5px; opacity: 0.55; }
+/* 标题行不换行：名称与地址同一行，超长各自省略号截断 */
+.ws-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.ws-name {
+  font-size: 19px;
+  font-weight: 700;
+  margin: 0;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-brokers {
+  font-size: 12.5px;
+  opacity: 0.55;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .ws-actions { display: flex; align-items: center; gap: 10px; }
 .ws-grid {
   flex: 1;
