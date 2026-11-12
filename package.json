@@ -3,12 +3,53 @@
   "version": "1.0.0",
   "private": true,
   "description": "Minimal local Kafka client for personal use",
-  "main": "server.js",
+  "author": "KafkaDesk",
+  "main": "electron/main.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js", 
+    "app": "electron .",
+    "dist": "electron-builder --win portable",
+    "dist:dir": "electron-builder --win --dir",
+    "verify": "node tools/verify-electron.js"
   },
   "dependencies": {
     "express": "^4.21.2",
     "kafkajs": "^2.2.4"
+  },
+  "build": {
+    "appId": "com.kafkadesk.desktop",
+    "productName": "KafkaDesk",
+    "directories": {
+      "output": "kafka_app"
+    },
+    "files": [
+      "electron/**/*",
+      "public/**/*",
+      "server.js",
+      "package.json",
+      "!data/**",
+      "!tools/**",
+      "!release/**",
+      "!*.bat"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "public/favicon.ico"
+    },
+    "portable": {
+      "artifactName": "KafkaDesk-${version}-portable.exe"
+    },
+    "compression": "normal"
+  },
+  "devDependencies": {
+    "electron": "^45.3.0",
+    "electron-builder": "^26.18.0"
   }
 }

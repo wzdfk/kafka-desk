@@ -15,10 +15,14 @@ const crypto = require('crypto');
 const express = require('express');
 const { Kafka, logLevel } = require('kafkajs');
 
-const HOST = '127.0.0.1';
+const HOST = process.env.KAFKA_DESK_HOST || '127.0.0.1';
 const PORT = Number(process.env.KAFKA_DESK_PORT || 18761);
 const DEMO = process.env.KAFKA_DESK_DEMO === '1';
-const DATA_DIR = path.join(__dirname, 'data');
+// Electron runs from app.asar (read-only): the shell injects a writable dir.
+// Unset -> keep the historical <repo>/data location for `node server.js`.
+const DATA_DIR = process.env.KAFKA_DESK_DATA
+  ? path.resolve(process.env.KAFKA_DESK_DATA)
+  : path.join(__dirname, 'data');
 const SERVERS_FILE = path.join(DATA_DIR, 'servers.json');
 const MAX_BUFFER = 200;       // per-server in-memory history
 const FLUSH_MS = 50;          // SSE batching window
@@ -657,6 +661,31 @@ if (DEMO) {
   }, 6000);
 }
 
-app.listen(PORT, HOST, () => {
-  console.log(`KafkaDesk running at http://${HOST}:${PORT}${DEMO ? ' (DEMO mode)' : ''} | servers=${registry.length}`);
-});
+/**
+ * Boot the HTTP server. `port: 0` lets the OS pick a free port, which the
+ * Electron shell relies on so it never collides with a `start.bat` instance.
+ * @returns {Promise<{server: import('http').Server, port: number, url: string}>}
+ */
+function startServer(options = {}) {
+  const host = options.host || HOST;
+  const port = options.port === undefined ? PORT : Number(options.port);
+  return new Promise((resolve, reject) => {
+    const server = app.listen(port, host, () => {
+      const addr = server.address();
+      const actual = addr && typeof addr === 'object' ? addr.port : port;
+      const url = `http://${host}:${actual}`;
+      console.log(`KafkaDesk running at ${url}${DEMO ? ' (DEMO mode)' : ''} | servers=${registry.length}`);
+      resolve({ server, port: actual, url });
+    });
+    server.once('error', reject);
+  });
+}
+
+if (require.main === module) {
+  startServer().catch((err) => {
+    console.error(`[ERROR] 启动失败: ${err.message}`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { app, startServer };
