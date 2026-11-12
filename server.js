@@ -633,7 +633,18 @@ app.post('/api/servers/:id/unsubscribe', api(async (req, res) => {
  * Static files + error handling + boot
  * ------------------------------------------------------------------ */
 
-app.use(express.static(path.join(__dirname, 'public')));
+/* 静态前端选择（T9 集成切换）：
+ * - 默认 `public/`（旧版 UI）：start.bat 与 `node server.js` 行为不变；
+ * - Electron 主进程注入 KAFKA_DESK_STATIC=web/dist（Vue3 版）；
+ * - 指向的目录缺 index.html 时回退 public/，保证旧版路径永远可用。 */
+let STATIC_DIR = path.resolve(__dirname, process.env.KAFKA_DESK_STATIC || 'public');
+if (!fs.existsSync(path.join(STATIC_DIR, 'index.html'))) {
+  if (process.env.KAFKA_DESK_STATIC) {
+    console.warn(`[WARN] KAFKA_DESK_STATIC="${process.env.KAFKA_DESK_STATIC}" 缺少 index.html，回退到 public/（旧版界面）`);
+  }
+  STATIC_DIR = path.resolve(__dirname, 'public');
+}
+app.use(express.static(STATIC_DIR));
 
 app.use((err, req, res, next) => {
   const message = err && err.type === 'entity.parse.failed'

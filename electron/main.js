@@ -19,6 +19,11 @@ const IS_DEV = !app.isPackaged;
 process.env.KAFKA_DESK_DATA =
   process.env.KAFKA_DESK_DATA || path.join(app.getPath('userData'), 'data');
 
+// Serve the Vue3 frontend (web/dist, T9). Works from the source tree and from
+// inside app.asar; if the dir is missing, server.js falls back to legacy public/.
+process.env.KAFKA_DESK_STATIC =
+  process.env.KAFKA_DESK_STATIC || path.join(__dirname, '..', 'web', 'dist');
+
 const { startServer } = require('../server');
 
 let mainWindow = null;

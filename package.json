@@ -10,8 +10,11 @@
     "app": "electron .",
     "dist": "electron-builder --win portable",
     "dist:dir": "electron-builder --win --dir",
+    "predist": "npm --prefix web run build",
+    "predist:dir": "npm --prefix web run build",
     "verify": "node tools/verify-electron.js",
-    "verify:web": "node tools/verify-web.js"
+    "verify:web": "node tools/verify-web.js",
+    "verify:integration": "node tools/verify-integration.js"
   },
   "dependencies": {
     "express": "^4.21.2",
@@ -26,6 +29,7 @@
     "files": [
       "electron/**/*",
       "public/**/*",
+      "web/dist/**/*",
       "server.js",
       "package.json",
       "!data/**",

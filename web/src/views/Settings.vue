@@ -205,7 +205,7 @@ function back() {
         <n-icon :component="p.icon" :size="16" />
         <span>{{ p.label }}</span>
       </button>
-      <div class="nav-foot">设置保存在本机浏览器<br />（localStorage，不上传）</div>
+      <div class="nav-foot">设置保存在本地<br /></div>
     </aside>
 
     <div class="set-main">
@@ -377,7 +377,6 @@ function back() {
             <img src="/logo.png" alt="KafkaDesk" width="64" height="64" class="about-logo" />
             <div class="about-body">
               <h2>KafkaDesk <span class="about-ver">v{{ APP_VERSION }}</span></h2>
-              <p>个人用简易 Kafka 客户端 · 本地运行，消息与配置都不出本机网络。</p>
             </div>
           </div>
 
@@ -391,12 +390,7 @@ function back() {
               <dt>运行模式</dt><dd>{{ modeText }}</dd>
               <dt>已配置服务器</dt><dd>{{ serverCount }}</dd>
               <dt>界面版本</dt><dd>v{{ APP_VERSION }}</dd>
-              <dt>图标资源</dt><dd>logo.png · favicon.ico（多尺寸）</dd>
             </dl>
-            <p class="note">
-              双击 start.bat 启动本地服务并打开独立窗口；任务栏与窗口图标取自本项目的 favicon，
-              若仍显示旧图标，请完全关闭窗口（或从任务栏取消固定）后重新打开一次。
-            </p>
           </div>
         </section>
       </div>
