@@ -5,6 +5,7 @@ import { naiveTheme, themeOverrides } from '../theme/index.js';
 let discrete = null;
 
 function ensure() {
+  if (typeof document === 'undefined') return null; // Node tests / SSR
   if (!discrete) {
     discrete = createDiscreteApi(['dialog'], { theme: naiveTheme, themeOverrides });
   }
@@ -12,8 +13,12 @@ function ensure() {
 }
 
 export function confirmDialog({ title, content, positiveText = '确定', negativeText = '取消', onPositiveClick }) {
-  const { dialog } = ensure();
-  dialog.warning({
+  const api = ensure();
+  if (!api) {
+    console.log(`[dialog] ${title}: ${content}`);
+    return;
+  }
+  api.dialog.warning({
     title,
     content,
     positiveText,

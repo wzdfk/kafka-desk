@@ -9,6 +9,31 @@ export const CFG_SEC_DEFAULTS = { topic: true, misc: true, log: false };
 const RUN_LOG_MAX = 200;
 const TOPIC_NAME_RE = /^[A-Za-z0-9._-]+$/;
 const SAVE_HINT_MS = 2200;
+const DRAFT_DEBOUNCE_MS = 300;
+
+export const SAMPLE = {
+  hello: 'kafka',
+  source: 'KafkaDesk',
+  ts: Date.now(),
+  nested: { ok: true, items: [1, 2, 3] },
+};
+
+const textEncoder = new TextEncoder();
+/* UTF-8 byte length (CJK counts 3 bytes), matches the legacy byteLen. */
+export function byteLen(str) {
+  return textEncoder.encode(String(str || '')).length;
+}
+
+/* JSON validity for the editor footer; also reused by the message cards. */
+export function checkJson(raw) {
+  if (!String(raw || '').trim()) return { state: 'empty', message: '等待输入' };
+  try {
+    JSON.parse(raw);
+    return { state: 'ok', message: '合法 JSON' };
+  } catch (err) {
+    return { state: 'bad', message: `JSON 错误：${err.message}` };
+  }
+}
 
 function unique(arr) {
   return [...new Set(arr)];
@@ -45,6 +70,13 @@ export const useActiveStore = defineStore('active', () => {
   const saveState = ref('idle'); // idle | busy | ok | err
   const saveStateText = ref('');
 
+  /* ---- send area (T4) ---- */
+  const draft = ref({ payload: '', key: '' });
+  const draftState = ref('idle'); // idle | saving | saved | error
+  const draftStateText = ref('');
+  const sendBusy = ref(false);
+  const lastReceipt = ref(null); // {topic, partition, offset, bytes, ts}
+
   const cfgSections = ref({ ...CFG_SEC_DEFAULTS });
 
   const server = computed(() => servers.byId(serverId.value));
@@ -80,6 +112,7 @@ export const useActiveStore = defineStore('active', () => {
   /* Enter a workspace: fresh working copy from the server status payload.
    * Returns the (awaitable) silent catalog fetch for tests / eager callers. */
   async function loadServer(id) {
+    persistDraft.flush(); // land the pending draft on the server we're leaving
     persistSave.cancel();
     serverId.value = id || '';
     const s = id ? servers.byId(id) : null;
@@ -101,7 +134,101 @@ export const useActiveStore = defineStore('active', () => {
     connBusy.value = false;
     saveState.value = 'idle';
     saveStateText.value = '';
+    sendBusy.value = false;
+    lastReceipt.value = null;
+    restoreDraft(id);
     if (id) await loadCatalog(id, false);
+  }
+
+  /* ---- draft persistence (300ms debounce, {payload, key, ts}) ---- */
+  function restoreDraft(id) {
+    const saved = id ? readJson(storageKeys.draft(id), null) : null;
+    if (saved && typeof saved.payload === 'string') {
+      draft.value = { payload: saved.payload, key: typeof saved.key === 'string' ? saved.key : '' };
+    } else {
+      draft.value = { payload: JSON.stringify(SAMPLE, null, 2), key: '' };
+    }
+    draftState.value = 'idle';
+    draftStateText.value = '';
+  }
+
+  function saveDraftNow() {
+    const id = serverId.value;
+    if (!id) return;
+    try {
+      writeJson(storageKeys.draft(id), {
+        payload: draft.value.payload,
+        key: draft.value.key,
+        ts: Date.now(),
+      });
+      draftState.value = 'saved';
+      draftStateText.value = '草稿已自动缓存';
+    } catch {
+      draftState.value = 'error';
+      draftStateText.value = '草稿缓存不可用';
+    }
+  }
+
+  const persistDraft = debounce(saveDraftNow, DRAFT_DEBOUNCE_MS);
+
+  function scheduleDraftSave() {
+    draftState.value = 'saving';
+    draftStateText.value = '缓存中…';
+    persistDraft();
+  }
+
+  function setPayload(v) { draft.value.payload = v; scheduleDraftSave(); }
+  function setKey(v) { draft.value.key = v; scheduleDraftSave(); }
+
+  const jsonState = computed(() => checkJson(draft.value.payload));
+  const payloadBytes = computed(() => byteLen(draft.value.payload));
+  const canSend = computed(() => jsonState.value.state === 'ok' && !!serverId.value);
+
+  function loadSample() {
+    setPayload(JSON.stringify(SAMPLE, null, 2));
+  }
+
+  function formatPayload() {
+    const raw = draft.value.payload;
+    if (!raw.trim()) return;
+    try {
+      setPayload(JSON.stringify(JSON.parse(raw), null, 2));
+    } catch (err) {
+      toast(`JSON 错误：${err.message}`, 'error');
+    }
+  }
+
+  function clearPayload() {
+    setPayload('');
+    draftStateText.value = '';
+    draftState.value = 'idle';
+  }
+
+  async function send() {
+    if (sendBusy.value || !canSend.value) return null;
+    sendBusy.value = true;
+    try {
+      await saveConfig(); // send always runs against the saved config
+      const res = await api.send(serverId.value, {
+        key: (draft.value.key || '').trim(),
+        payload: draft.value.payload,
+      });
+      const md = res?.metadata || {};
+      lastReceipt.value = {
+        topic: res?.topic || md.topicName || '',
+        partition: md.partition,
+        offset: md.baseOffset,
+        bytes: res?.bytes,
+        ts: Date.now(),
+      };
+      toast('消息已发送', 'success');
+      return res;
+    } catch (err) {
+      toast(err.message, 'error');
+      return null;
+    } finally {
+      sendBusy.value = false;
+    }
   }
 
   function readConfigBody() {
@@ -289,10 +416,13 @@ export const useActiveStore = defineStore('active', () => {
     serverId, server, isServerUp,
     config, savedConfig, selectedTopics, catalog, filteredTopics, topicSearch, customInput,
     busyTopics, runLogs, connBusy, saveState, saveStateText, cfgSections,
+    draft, draftState, draftStateText, sendBusy, lastReceipt,
+    jsonState, payloadBytes, canSend,
     loadServer, toggleSection, pushRunLog, clearRunLog,
     saveConfig, scheduleConfigSave, loadCatalog,
     onTopicToggle, addCustomTopic,
     toggleTopicSubscription, toggleAllTopics, unsubscribeTopics,
     connect, disconnect,
+    setPayload, setKey, loadSample, formatPayload, clearPayload, send, saveDraftNow,
   };
 });

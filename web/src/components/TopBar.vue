@@ -47,7 +47,7 @@ function go(tab) {
       <img class="brand-logo" src="/logo.png" alt="KafkaDesk" width="28" height="28" />
       <div class="brand-text">
         <div class="brand-name">KafkaDesk</div>
-        <div class="brand-sub">个人用简易 Kafka 客户端</div>
+        <!-- <div class="brand-sub">个人用简易 Kafka 客户端</div> -->
       </div>
     </div>
 

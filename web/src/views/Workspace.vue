@@ -1,12 +1,13 @@
 <script setup>
-import { computed, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { NButton, NEmpty } from 'naive-ui';
 import { useServersStore } from '../stores/servers.js';
 import { useActiveStore } from '../stores/active.js';
 import ConfigPanel from '../components/ConfigPanel.vue';
+import SendPanel from '../components/SendPanel.vue';
 
-/* Workspace shell: config column + (T4/T5) send/receive main area.
+/* Workspace shell: config column + receive placeholder (T5) + send panel.
  * Route is the source of truth for the active server. */
 const route = useRoute();
 const router = useRouter();
@@ -21,6 +22,16 @@ watch([id, () => servers.loaded], ([val, loaded]) => {
   if (!servers.byId(val)) { router.replace('/'); return; }
   active.loadServer(val);
 }, { immediate: true });
+
+/* Global Ctrl/Cmd+Enter send (legacy payload keydown, promoted to window). */
+function onGlobalKey(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    active.send();
+  }
+}
+onMounted(() => window.addEventListener('keydown', onGlobalKey));
+onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey));
 </script>
 
 <template>
@@ -53,12 +64,15 @@ watch([id, () => servers.loaded], ([val, loaded]) => {
     <div class="ws-grid">
       <ConfigPanel />
       <div class="ws-main">
-        <n-empty
-          class="ws-empty"
-          :description="active.selectedTopics.length
-            ? '勾选主题后可在此订阅并查看消息（发送/接收区 T4-T5 实现）'
-            : '在左侧配置区勾选主题，然后连接并订阅'"
-        />
+        <div class="ws-receive">
+          <n-empty
+            class="ws-empty"
+            :description="active.selectedTopics.length
+              ? '已选主题，可订阅后在此查看消息（接收区 T5 实现）'
+              : '在左侧配置区勾选主题，然后连接并订阅'"
+          />
+        </div>
+        <SendPanel />
       </div>
     </div>
   </section>
@@ -85,7 +99,14 @@ watch([id, () => servers.loaded], ([val, loaded]) => {
   .ws-grid { grid-template-columns: 1fr; }
 }
 .ws-main {
-  min-height: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.ws-receive {
+  flex: 1;
+  min-height: 260px;
   display: flex;
   align-items: center;
   justify-content: center;

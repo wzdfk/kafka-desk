@@ -7,6 +7,7 @@ import { naiveTheme, themeOverrides } from '../theme/index.js';
 let discrete = null;
 
 function ensure() {
+  if (typeof document === 'undefined') return null; // Node tests / SSR
   if (!discrete) {
     discrete = createDiscreteApi(['message'], { theme: naiveTheme, themeOverrides });
   }
@@ -14,7 +15,11 @@ function ensure() {
 }
 
 export function toast(text, type = 'success') {
-  const { message } = ensure();
-  const fn = message[type] || message.info;
+  const api = ensure();
+  if (!api) {
+    console.log(`[toast:${type}] ${text}`);
+    return;
+  }
+  const fn = api.message[type] || api.message.info;
   fn(String(text), { duration: 3200, keepAliveOnHover: false });
 }
