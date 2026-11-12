@@ -5,6 +5,7 @@ import { connectSse, updateSseHandlers } from '../api/sse.js';
 import { LEGACY_KEYS, readJson, removeServerLocal, storageKeys, writeJson } from '../utils/storage.js';
 import { toast } from '../utils/toast.js';
 import { useSyslogStore } from './syslog.js';
+import { useActiveStore } from './active.js';
 
 const TABS_LIMIT = 20;
 
@@ -36,6 +37,14 @@ export const useServersStore = defineStore('servers', () => {
 
   function persistTabs() {
     writeJson(storageKeys.openTabs, tabs.value);
+  }
+
+  /* Merge a single server view (config/connect/subscribe acks) into the list. */
+  function applyServerUpdate(s) {
+    if (!s || !s.id) return;
+    const idx = list.value.findIndex((x) => x.id === s.id);
+    if (idx >= 0) list.value[idx] = s;
+    else list.value.push(s);
   }
 
   function openTab(id) {
@@ -84,6 +93,10 @@ export const useServersStore = defineStore('servers', () => {
       onLog: ({ serverId, level, text, ts }) => {
         const server = byId(serverId);
         syslog.add({ level, text, ts, src: server ? server.name : '服务' });
+        // Active workspace keeps its own run log (200 entries, capped).
+        if (serverId && serverId === activeId.value) {
+          useActiveStore().pushRunLog({ ts, level, text });
+        }
       },
       onMessages: () => { /* consumed by the workspace store (T5) */ },
       onAppError: handleAppError,
@@ -155,7 +168,7 @@ export const useServersStore = defineStore('servers', () => {
 
   return {
     list, demo, loaded, sseConnected, tabs, activeId,
-    byId, applyStatus, refresh, init, bindSseHandlers,
+    byId, applyStatus, applyServerUpdate, refresh, init, bindSseHandlers,
     addServer, updateServer, deleteServer,
     openTab, forgetTab, setActiveId,
   };

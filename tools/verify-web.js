@@ -19,18 +19,19 @@ function check(name, ok, extra = '') {
 
 const SRC_FILES = [
   'src/main.js', 'src/App.vue', 'src/theme/index.js', 'src/theme/overrides.js',
-  'src/api/api.js', 'src/api/sse.js', 'src/utils/storage.js', 'src/utils/toast.js',
-  'src/stores/servers.js', 'src/stores/prefs.js', 'src/stores/syslog.js',
+  'src/api/api.js', 'src/api/sse.js', 'src/utils/storage.js', 'src/utils/toast.js', 'src/utils/dialog.js',
+  'src/stores/servers.js', 'src/stores/prefs.js', 'src/stores/syslog.js', 'src/stores/active.js',
   'src/router/index.js', 'src/components/TopBar.vue', 'src/components/IconBtn.vue',
-  'src/components/StatusBadge.vue', 'src/views/ServerList.vue', 'src/views/Workspace.vue',
-  'src/views/Settings.vue',
+  'src/components/StatusBadge.vue', 'src/components/ServerModal.vue',
+  'src/components/AccordionSection.vue', 'src/components/ConfigPanel.vue', 'src/components/RunLogPanel.vue',
+  'src/views/ServerList.vue', 'src/views/Workspace.vue', 'src/views/Settings.vue',
 ];
 
 function main() {
   check('web/ 工程存在', fs.existsSync(path.join(WEB, 'package.json')));
 
   let missing = SRC_FILES.filter((f) => !fs.existsSync(path.join(WEB, f)));
-  check('关键源文件齐全（18 个）', missing.length === 0, missing.join(', '));
+  check(`关键源文件齐全（${SRC_FILES.length} 个）`, missing.length === 0, missing.join(', '));
 
   const html = fs.existsSync(path.join(WEB, 'index.html'))
     ? fs.readFileSync(path.join(WEB, 'index.html'), 'utf8') : '';
