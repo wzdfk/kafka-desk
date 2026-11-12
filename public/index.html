@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KafkaDesk · 简易 Kafka 客户端</title>
+  <!-- app icon: favicon.ico drives the browser tab AND the taskbar icon of the
+       --app window opened by start.bat; logo.png is the hi-dpi fallback. -->
+  <link rel="icon" href="favicon.ico?v=2" sizes="any" />
+  <link rel="icon" type="image/png" href="logo.png?v=2" sizes="512x512" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=2" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#ffffff" />
+  <script>
+    // Resolve the theme before the first paint so a dark setup never flashes white.
+    (function () {
+      var mode = 'system';
+      try { mode = localStorage.getItem('kafka-desk-theme') || 'system'; } catch (e) {}
+      if (mode !== 'light' && mode !== 'dark' && mode !== 'system') mode = 'system';
+      var dark = false;
+      try { dark = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches); } catch (e) {}
+      var root = document.documentElement;
+      root.setAttribute('data-theme-mode', mode);
+      root.setAttribute('data-theme', mode === 'system' ? (dark ? 'dark' : 'light') : mode);
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img class="brand-logo" src="logo.png" alt="KafkaDesk" width="30" height="30" />
+      <div>
+        <div class="brand-name">KafkaDesk</div>
+        <div class="brand-sub">个人用简易 Kafka 客户端</div>
+      </div>
+    </div>
+    <div class="top-center">
+      <nav id="serverTabs" class="server-tabs" aria-label="服务器选项卡">
+        <button id="backHome" class="nav-tab nav-tab-home" type="button" title="服务器列表（添加 / 编辑 / 删除 Broker）">
+          <span class="nav-home-icon">▦</span><span>服务器列表</span>
+        </button>
+      </nav>
+    </div>
+    <div class="top-right">
+      <span id="demoBadge" class="chip chip-demo hidden">演示模式</span>
+      <span id="sseBadge" class="chip chip-muted">本地服务连接中</span>
+      <span id="statusBadge" class="chip chip-off"><i class="dot"></i><span>未连接</span></span>
+      <div class="top-actions">
+        <button id="themeQuick" class="top-icon-btn" type="button" data-mode="system" title="主题：跟随系统 · 点击切换" aria-label="切换主题">
+          <svg class="ic ic-sun" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.2"></circle>
+            <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"></path>
+          </svg>
+          <svg class="ic ic-moon" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20.2 14.4A8.4 8.4 0 0 1 9.6 3.8 8.6 8.6 0 1 0 20.2 14.4z"></path>
+          </svg>
+          <svg class="ic ic-auto" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.4"></circle>
+            <path d="M12 3.6a8.4 8.4 0 0 1 0 16.8z" fill="currentColor" stroke="none"></path>
+          </svg>
+        </button>
+        <button id="settingsBtn" class="top-icon-btn" type="button" title="系统设置" aria-label="系统设置">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ 首页：服务器卡片 ============ -->
+  <section id="homeView" class="home-view">
+    <div class="home-head">
+      <div>
+        <h1>服务器列表</h1>
+        <p>添加 Bootstrap Server，点选一台进入工作区。各服务器的配置、订阅与消息缓存互相隔离。</p>
+      </div>
+      <div class="home-head-right">
+        <span id="homeCount" class="home-count">0 台服务器</span>
+        <button id="addServer" class="btn btn-primary" type="button">+ 添加 Broker</button>
+      </div>
+    </div>
+    <div id="serverGrid" class="server-grid"></div>
+  </section>
+
+  <!-- ============ 工作区：单台服务器 ============ -->
+  <main id="appView" class="layout hidden">
+    <!-- 配置区（三个可折叠板块 + 常驻底部操作条） -->
+    <section class="card config-card">
+      <div class="card-head">
+        <h2>配置区</h2>
+        <span class="card-hint">改动自动保存</span>
+      </div>
+
+      <div class="cfg-scroll">
+        <!-- 板块 1 · 主题配置 -->
+        <section class="acc is-open" data-sec="topic">
+          <div class="acc-head">
+            <button class="acc-toggle" type="button" data-sec="topic" aria-expanded="true">
+              <i class="acc-chev"></i>
+              <span class="acc-title">主题配置</span>
+              <span class="acc-meta" data-meta="topic">已选 0</span>
+            </button>
+          </div>
+          <div class="acc-body">
+            <div class="acc-inner">
+              <label class="field">
+                <span class="sub-title">发送主题 <em>必填</em></span>
+                <div class="inline">
+                  <input id="sendTopic" spellcheck="false" placeholder="例如：order.request" />
+                  <button id="refreshTopics" class="btn btn-ghost" title="从 Broker 读取全部主题，供发送下拉 / 接收主题 / 接收筛选使用" type="button">刷新</button>
+                </div>
+                <select id="sendTopicSelect" class="send-topic-select" title="从 Broker 主题列表选择（单选）">
+                  <option value="">从主题列表选择…</option>
+                </select>
+                <span class="field-tip">也可从下拉选一个已读取的主题；「刷新」拉取 Broker 全部主题</span>
+              </label>
+
+              <div class="sub-split"></div>
+
+              <div class="sub-head">
+                <span class="sub-title">接收主题 <em>可多选</em></span>
+                <span id="pickedCount" class="picker-count">已选 0</span>
+              </div>
+              <input id="topicSearch" class="picker-search" placeholder="搜索主题…" spellcheck="false" />
+              <div id="topicChecks" class="topic-checks"></div>
+              <div class="picker-add">
+                <input id="customTopic" placeholder="自定义主题名" spellcheck="false" />
+                <button id="addCustomTopic" class="btn btn-ghost btn-sm" type="button">添加</button>
+              </div>
+              <span class="field-tip">勾选后出现在接收区顶部，点击按钮即可订阅 / 取消订阅</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 板块 2 · 其他设置 -->
+        <section class="acc is-open" data-sec="misc">
+          <div class="acc-head">
+            <button class="acc-toggle" type="button" data-sec="misc" aria-expanded="true">
+              <i class="acc-chev"></i>
+              <span class="acc-title">其他设置</span>
+              <span class="acc-meta" data-meta="misc">消费组自动</span>
+            </button>
+          </div>
+          <div class="acc-body">
+            <div class="acc-inner">
+              <label class="field">
+                <span class="sub-title">消费组 ID <span class="optional">可选</span></span>
+                <input id="groupId" spellcheck="false" placeholder="留空则自动按服务器+主题生成" />
+                <span class="field-tip">留空时每个主题各自独立生成消费组，互不影响</span>
+              </label>
+
+              <div class="sub-split"></div>
+
+              <div class="check-block">
+                <span class="sub-title">订阅模式</span>
+                <label class="check-row">
+                  <input id="fromBeginning" type="checkbox" />
+                  <span>从最早的消息开始读</span>
+                </label>
+                <span class="field-tip warn-tip">默认只读新消息；大主题开启会拉取全部历史消息</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- 板块 3 · 运行日志：放在滚动区之外，标题永远可见 -->
+      <div class="cfg-log">
+        <section class="acc" data-sec="log">
+          <div class="acc-head">
+            <button class="acc-toggle" type="button" data-sec="log" aria-expanded="false">
+              <i class="acc-chev"></i>
+              <span class="acc-title">运行日志</span>
+              <span class="acc-meta" data-meta="log">0 条</span>
+            </button>
+            <button id="clearLog" class="link-btn acc-act" type="button" title="清空运行日志">清空</button>
+          </div>
+          <div class="acc-body">
+            <div class="acc-inner">
+              <div id="logList" class="log-list" aria-live="polite"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="cfg-foot">
+        <button id="connToggle" class="btn btn-primary conn-toggle" type="button">连接</button>
+        <span id="cfgSaveHint" class="field-tip save-hint">配置改动会自动保存，无需手动提交</span>
+      </div>
+    </section>
+
+    <div class="main-col">
+      <!-- 发送区 -->
+      <section class="card send-card">
+        <div class="card-head">
+          <h2>发送区</h2>
+          <div class="card-head-actions">
+            <span class="card-hint">仅支持 JSON 格式</span>
+            <button id="autoTestBtn" class="icon-btn icon-btn-sm" type="button" title="自动化发送设置" aria-label="自动化发送设置">
+              <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true">
+                <path d="M8.7 5.6a1 1 0 0 1 1.53-.85l7.9 5.4a1 1 0 0 1 0 1.7l-7.9 5.4a1 1 0 0 1-1.53-.85z" fill="currentColor"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="card-body send-body">
+          <div class="send-meta">
+            <label class="field compact">
+              <span class="field-label">Key <span class="optional">可选 · 用于分区路由</span></span>
+              <input id="sendKey" spellcheck="false" placeholder="留空则由 Kafka 分配分区" />
+            </label>
+            <div class="send-target">
+              <span class="field-label">发送主题</span>
+              <span id="sendTargetLabel" class="send-target-value">（在左侧配置区设置）</span>
+            </div>
+          </div>
+          <div class="editor-wrap">
+            <textarea id="payload" spellcheck="false" placeholder='{
+  "hello": "kafka"
+}'>{
+  "hello": "kafka",
+  "ts": 1730000000
+}</textarea>
+            <div class="editor-foot">
+              <span id="jsonState" class="json-state ok">合法 JSON</span>
+              <span id="byteCount" class="byte-count">0 B</span>
+              <span id="draftState" class="draft-state">草稿已自动缓存</span>
+              <span class="spacer"></span>
+              <button id="sampleBtn" class="link-btn" type="button">示例</button>
+              <button id="formatBtn" class="link-btn" type="button">格式化</button>
+              <button id="clearPayload" class="link-btn" type="button">清空</button>
+            </div>
+          </div>
+          <div class="send-foot">
+            <span class="shortcut">Ctrl + Enter 发送</span>
+            <span id="autoRunBadge" class="auto-badge hidden" title="点击查看自动化设置">
+              <i class="auto-badge-dot"></i><span id="autoRunText">自动化运行中</span>
+            </span>
+            <button id="autoStopQuick" class="btn btn-ghost btn-sm btn-stop hidden" type="button">停止</button>
+            <span class="spacer"></span>
+            <button id="sendBtn" class="btn btn-primary btn-send" type="button">发送消息</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 接收区 -->
+      <section class="card recv-card">
+        <div class="card-head">
+          <h2>接收区</h2>
+          <span class="card-hint"><span id="msgCount">0</span> 条 · <span id="msgRate">0</span>/s <span id="dropHint" class="drop-hint hidden"></span></span>
+        </div>
+        <div class="topic-bar">
+          <span class="topic-bar-label">订阅主题</span>
+          <div id="topicButtons" class="topic-buttons"></div>
+          <button id="toggleAllTopics" class="btn btn-ghost btn-sm" type="button">全部订阅</button>
+        </div>
+        <div class="toolbar">
+          <input id="filter" class="filter-input" placeholder="过滤 topic / key / 内容" spellcheck="false" />
+          <button id="topicFilterBtn" class="topic-filter-btn" type="button" title="按主题多选筛选">
+            <span id="topicFilterLabel">全部主题</span><span class="caret">▾</span>
+          </button>
+          <label class="check-row inline-check">
+            <input id="autoScroll" type="checkbox" checked />
+            <span>自动滚动</span>
+          </label>
+          <label class="check-row inline-check">
+            <input id="pauseDisplay" type="checkbox" />
+            <span>暂停显示</span>
+          </label>
+          <button id="clearMessages" class="btn btn-ghost btn-sm" type="button" title="清空当前服务器显示与本地缓存">清空</button>
+          <div id="topicFilterPanel" class="topic-filter-panel hidden">
+            <div class="tfp-head">
+              <span class="tfp-title">按主题筛选 · 可多选</span>
+              <span id="topicFilterCount" class="tfp-count">全部主题</span>
+              <span class="spacer"></span>
+              <button id="topicFilterPickAll" class="link-btn" type="button" title="勾选全部主题">全选</button>
+              <button id="topicFilterAll" class="link-btn" type="button" title="清除筛选，显示全部消息">清除筛选</button>
+            </div>
+            <div id="topicFilterChecks" class="tfp-list"></div>
+            <div class="tfp-foot">不勾选任何主题 = 显示全部消息（含之后新出现的主题）；勾选后只显示所选主题。「全选」会自动跟上新主题，选择按服务器记忆。</div>
+          </div>
+        </div>
+        <div id="messageList" class="message-list">
+          <div id="emptyState" class="empty-state">
+            <img class="empty-logo" src="logo.png" alt="" width="40" height="40" />
+            <p id="emptyTitle">在左侧勾选主题，然后点击顶部按钮订阅</p>
+            <span id="emptyHint">消息会实时显示在这里，点击标题栏可展开完整详情</span>
+          </div>
+        </div>
+        <div class="recv-foot">
+          <span id="recvFootInfo">固定滚动区 · 最多保留 500 条</span>
+          <span class="recv-foot-end">接收区底部</span>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ============ 系统设置 ============ -->
+  <section id="settingsView" class="settings-view hidden">
+    <aside class="set-nav">
+      <div class="set-nav-head">
+        <span class="set-nav-title">系统设置</span>
+        <span id="setVersion" class="set-nav-ver">v1.0.0</span>
+      </div>
+      <button class="set-nav-item is-active" data-pane="appearance" type="button">
+        <svg class="set-nav-ico" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+          <circle cx="12" cy="12" r="8.4"></circle>
+          <path d="M12 3.6a8.4 8.4 0 0 1 0 16.8z" fill="currentColor" stroke="none"></path>
+        </svg>
+        <span>外观主题</span>
+      </button>
+      <button class="set-nav-item" data-pane="messages" type="button">
+        <svg class="set-nav-ico" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 5.5h16M4 12h16M4 18.5h10"></path>
+        </svg>
+        <span>消息与缓存</span>
+      </button>
+      <button class="set-nav-item" data-pane="logs" type="button">
+        <svg class="set-nav-ico" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3.2" y="4.4" width="17.6" height="15.2" rx="2.4"></rect>
+          <path d="M7.4 9.6l2.6 2.4-2.6 2.4M13 14.4h3.6"></path>
+        </svg>
+        <span>系统日志</span>
+      </button>
+      <button class="set-nav-item" data-pane="about" type="button">
+        <svg class="set-nav-ico" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="8.4"></circle>
+          <path d="M12 10.8v5.4M12 7.9v.1"></path>
+        </svg>
+        <span>关于</span>
+      </button>
+      <div class="set-nav-foot">设置保存在本机浏览器<br />（localStorage，不上传）</div>
+    </aside>
+
+    <div class="set-main">
+      <header class="set-head">
+        <div>
+          <h1 id="setTitle">外观主题</h1>
+          <p id="setDesc">选择界面配色方案，改动立即生效。</p>
+        </div>
+        <button id="settingsBack" class="btn btn-ghost btn-sm" type="button">← 返回</button>
+      </header>
+
+      <div class="set-scroll">
+        <!-- 外观 -->
+        <section class="set-pane is-on" data-pane="appearance">
+          <div class="set-card">
+            <div class="set-card-head">
+              <h3>主题模式</h3>
+              <span id="themeNowLabel">跟随系统</span>
+            </div>
+            <div class="theme-options">
+              <button class="theme-opt" data-theme-opt="light" type="button">
+                <span class="tp">
+                  <span class="tp-top"></span>
+                  <span class="tp-body">
+                    <span class="tp-side"></span>
+                    <span class="tp-lines"><i></i><i></i><i></i></span>
+                  </span>
+                </span>
+                <span class="theme-opt-body">
+                  <b>明亮</b>
+                  <small>浅色背景，适合白天与投屏</small>
+                </span>
+                <span class="theme-check" aria-hidden="true">✓</span>
+              </button>
+              <button class="theme-opt" data-theme-opt="dark" type="button">
+                <span class="tp">
+                  <span class="tp-top"></span>
+                  <span class="tp-body">
+                    <span class="tp-side"></span>
+                    <span class="tp-lines"><i></i><i></i><i></i></span>
+                  </span>
+                </span>
+                <span class="theme-opt-body">
+                  <b>幽暗</b>
+                  <small>深色界面，长时间盯消息更省眼</small>
+                </span>
+                <span class="theme-check" aria-hidden="true">✓</span>
+              </button>
+              <button class="theme-opt" data-theme-opt="system" type="button">
+                <span class="tp">
+                  <span class="tp-top"></span>
+                  <span class="tp-body">
+                    <span class="tp-side"></span>
+                    <span class="tp-lines"><i></i><i></i><i></i></span>
+                  </span>
+                </span>
+                <span class="theme-opt-body">
+                  <b>跟随系统</b>
+                  <small>随 Windows 的浅色 / 深色自动切换</small>
+                </span>
+                <span class="theme-check" aria-hidden="true">✓</span>
+              </button>
+            </div>
+            <p class="set-note">顶部右侧的 ☀ / ☾ 按钮可在三种模式间快速循环切换（明亮 → 幽暗 → 跟随系统），无需进入本页。系统切换深浅色时，若处于「跟随系统」，界面会自动跟随。</p>
+          </div>
+        </section>
+
+        <!-- 消息与缓存 -->
+        <section class="set-pane" data-pane="messages">
+          <div class="set-card">
+            <div class="set-card-head">
+              <h3>接收区</h3>
+              <span>全局 · 所有服务器共用</span>
+            </div>
+            <div class="set-row">
+              <div class="set-row-main">
+                <div class="set-row-title">界面最多保留消息</div>
+                <div class="set-row-desc">超出后自动移除最早的消息节点，不影响 Kafka 里的数据。消息洪水时调低更流畅。</div>
+              </div>
+              <div class="set-row-ctl">
+                <select id="prefMaxMessages">
+                  <option value="200">200 条</option>
+                  <option value="500">500 条</option>
+                  <option value="1000">1000 条</option>
+                  <option value="2000">2000 条</option>
+                </select>
+              </div>
+            </div>
+            <div class="set-row">
+              <div class="set-row-main">
+                <div class="set-row-title">本地缓存条数</div>
+                <div class="set-row-desc">每台服务器在浏览器里留存最近多少条消息，下次打开自动恢复。调大可回看更多历史，占用更多本地空间。</div>
+              </div>
+              <div class="set-row-ctl">
+                <select id="prefCacheLimit">
+                  <option value="20">20 条</option>
+                  <option value="50">50 条</option>
+                  <option value="100">100 条</option>
+                  <option value="200">200 条</option>
+                  <option value="500">500 条</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="set-card">
+            <div class="set-card-head">
+              <h3>本地数据</h3>
+              <span id="storageSize">—</span>
+            </div>
+            <div class="set-row">
+              <div class="set-row-main">
+                <div class="set-row-title">清理本机缓存</div>
+                <div class="set-row-desc">清除所有服务器缓存的接收消息、发送草稿、筛选条件与主题之外的本地记录。服务器配置保存在服务端，不受影响。</div>
+              </div>
+              <div class="set-row-ctl">
+                <button id="clearLocalCache" class="btn btn-ghost btn-sm" type="button">清理</button>
+              </div>
+            </div>
+            <p class="set-note">「清理」不会退出当前订阅，也不会影响已经发出去的消息。</p>
+          </div>
+        </section>
+
+        <!-- 系统日志 -->
+        <section class="set-pane" data-pane="logs">
+          <div class="set-card set-card-log">
+            <div class="log-toolbar">
+              <div class="log-levels" id="sysLogLevels">
+                <button type="button" data-log-level="all" class="is-on">全部</button>
+                <button type="button" data-log-level="info">信息</button>
+                <button type="button" data-log-level="warn">警告</button>
+                <button type="button" data-log-level="error">错误</button>
+              </div>
+              <input id="sysLogSearch" class="log-search" placeholder="搜索日志 / 服务器…" spellcheck="false" />
+              <label class="check-row inline-check">
+                <input id="sysLogFollow" type="checkbox" checked />
+                <span>自动滚动</span>
+              </label>
+              <span class="spacer"></span>
+              <button id="sysLogExport" class="btn btn-ghost btn-sm" type="button">导出</button>
+              <button id="sysLogClear" class="btn btn-ghost btn-sm" type="button">清空</button>
+            </div>
+            <div id="sysLogList" class="sys-log-list" aria-live="polite"></div>
+            <div class="sys-log-foot">
+              <span id="sysLogCount">0 条</span>
+              <span>含本地服务事件 · 最多保留 400 条 · 存于本机</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 关于 -->
+        <section class="set-pane" data-pane="about">
+          <div class="set-card about-card">
+            <img class="about-logo" src="logo.png" alt="KafkaDesk" width="64" height="64" />
+            <div class="about-body">
+              <h2>KafkaDesk <span id="aboutVersion" class="about-ver">v1.0.0</span></h2>
+              <p>个人用简易 Kafka 客户端 · 本地运行，消息与配置都不出本机网络。</p>
+            </div>
+          </div>
+          <div class="set-card">
+            <div class="set-card-head">
+              <h3>运行信息</h3>
+              <span>实时</span>
+            </div>
+            <dl class="kv">
+              <dt>本地服务</dt><dd id="aboutEndpoint">—</dd>
+              <dt>运行模式</dt><dd id="aboutMode">—</dd>
+              <dt>已配置服务器</dt><dd id="aboutServers">—</dd>
+              <dt>界面版本</dt><dd id="aboutVersion2">—</dd>
+              <dt>图标资源</dt><dd>logo.png · favicon.ico（多尺寸）</dd>
+            </dl>
+            <p class="set-note">双击 start.bat 启动本地服务并打开独立窗口；任务栏与窗口图标取自本项目的 favicon，若仍显示旧图标，请完全关闭窗口（或从任务栏取消固定）后重新打开一次。</p>
+          </div>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 添加 / 编辑服务器弹窗 ============ -->
+  <div id="serverModal" class="modal-mask hidden">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="modal-head">
+        <h3 id="modalTitle">添加 Broker</h3>
+        <button id="modalClose" class="modal-x" type="button" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <label class="field">
+          <span class="field-label">名称 <span class="optional">可选 · 用于卡片显示</span></span>
+          <input id="modalName" spellcheck="false" placeholder="例如：本地开发集群" />
+        </label>
+        <label class="field">
+          <span class="field-label">Bootstrap Server <em>必填</em></span>
+          <textarea id="modalBrokers" rows="3" spellcheck="false" placeholder="127.0.0.1:9092"></textarea>
+          <span class="field-tip">多个地址用逗号、分号或换行分隔；未写端口时自动补 :9092</span>
+        </label>
+        <p id="modalError" class="modal-error hidden"></p>
+      </div>
+      <div class="modal-foot">
+        <button id="modalCancel" class="btn btn-ghost" type="button">取消</button>
+        <button id="modalSave" class="btn btn-primary" type="button">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 自动化测试弹窗 ============ -->
+  <div id="autoModal" class="modal-mask hidden">
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="autoTitle">
+      <div class="modal-head">
+        <h3 id="autoTitle">自动化测试</h3>
+        <span id="autoModeBadge" class="auto-mode-badge">真实 Kafka</span>
+        <button id="autoModalClose" class="modal-x" type="button" aria-label="关闭">×</button>
+      </div>
+
+      <label id="autoRandBar" class="auto-rand" for="autoRandomId">
+        <input id="autoRandomId" type="checkbox">
+        <span class="auto-rand-body">
+          <span class="auto-rand-title">使用随机 request_id <em>按服务器记忆</em></span>
+          <span class="auto-rand-desc">每条消息投递前生成随机 ID，直接替换内容体第一个字段 <b id="autoRandField">—</b> 的值。不改写发送区内容，仅作用于自动化发送；运行中切换即时生效。</span>
+        </span>
+      </label>
+
+      <div class="auto-readout">
+        <div class="auto-readout-row">
+          <span class="auto-readout-k">目标主题</span>
+          <span id="autoTopic" class="auto-readout-v">—</span>
+        </div>
+        <div class="auto-readout-row">
+          <span class="auto-readout-k">消息内容</span>
+          <span id="autoPayloadState" class="auto-readout-v">—</span>
+        </div>
+        <div class="auto-readout-row">
+          <span class="auto-readout-k">随机 ID</span>
+          <span id="autoRandLast" class="auto-readout-v muted">未启用 · 按原样投递发送区内容</span>
+        </div>
+        <div class="auto-readout-row">
+          <span class="auto-readout-k">投递回执</span>
+          <span id="autoReceipt" class="auto-readout-v">—</span>
+        </div>
+        <p>主题与消息内容只由左侧配置区 / 发送区决定，此处仅设置发送节奏。每条发送时实时读取发送区当前的 JSON 与 Key。</p>
+        <p class="auto-readout-tip">回执里的 partition / offset 由 Broker 返回，可据此确认消息已写入。发送主题与订阅主题不同时，接收区不会显示自己发出的消息。</p>
+      </div>
+
+      <div class="auto-grid">
+        <section id="autoCountPane" class="auto-pane">
+          <div class="auto-pane-head">
+            <h4>总数制</h4>
+            <span class="auto-pane-tag">发完自动停止</span>
+          </div>
+          <p class="auto-pane-desc">按设定总数逐条发送，达到数量后自动结束。</p>
+          <label class="field">
+            <span class="field-label">发送总数 <em>必填</em></span>
+            <input id="autoTotal" type="number" min="1" max="100000" step="1" value="100" />
+          </label>
+          <label class="field">
+            <span class="field-label">每条间隔 <span class="optional">毫秒 ms</span></span>
+            <input id="autoCountInterval" type="number" min="10" max="600000" step="10" value="500" />
+          </label>
+          <div class="auto-progress">
+            <div class="auto-progress-track"><div id="autoCountBar" class="auto-progress-bar"></div></div>
+            <span id="autoCountProgressText" class="auto-progress-text">0 / 100</span>
+          </div>
+          <div class="auto-pane-actions">
+            <button id="autoCountStart" class="btn btn-primary" type="button">开始发送</button>
+            <button id="autoCountStop" class="btn btn-ghost btn-stop" type="button" disabled>停止</button>
+          </div>
+        </section>
+
+        <section id="autoTimedPane" class="auto-pane">
+          <div class="auto-pane-head">
+            <h4>时间制</h4>
+            <span class="auto-pane-tag">手动停止</span>
+          </div>
+          <p class="auto-pane-desc">按固定间隔持续发送，直到手动点击停止。</p>
+          <label class="field">
+            <span class="field-label">发送间隔 <span class="optional">毫秒 ms</span></span>
+            <input id="autoTimedInterval" type="number" min="10" max="600000" step="10" value="1000" />
+          </label>
+          <div class="auto-timed-note">预计速率 <b id="autoTimedRate">1</b> 条/秒 · 持续发送无上限</div>
+          <div class="auto-pane-actions">
+            <button id="autoTimedStart" class="btn btn-primary" type="button">开始发送</button>
+            <button id="autoTimedStop" class="btn btn-ghost btn-stop" type="button" disabled>停止</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="auto-status">
+        <span id="autoStatusMode" class="auto-status-mode">空闲</span>
+        <span>已发 <b id="autoStatusSent">0</b></span>
+        <span>失败 <b id="autoStatusFailed">0</b></span>
+        <span>耗时 <b id="autoStatusElapsed">0s</b></span>
+        <span id="autoStatusHint" class="auto-status-hint">间隔低于 50ms 可能造成较大压力</span>
+      </div>
+      <p id="autoError" class="modal-error hidden"></p>
+
+      <div class="modal-foot auto-foot">
+        <span>关闭窗口不会停止发送，可在发送栏点「停止」结束</span>
+        <button id="autoModalDone" class="btn btn-ghost" type="button">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="app.js"></script>
+</body>
+</html>
