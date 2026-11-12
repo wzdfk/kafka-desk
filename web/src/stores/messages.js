@@ -1,8 +1,9 @@
-import { computed, ref, shallowRef } from 'vue';
+import { computed, ref, shallowRef, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { api } from '../api/api.js';
 import { readJson, storageKeys, writeJson, removeKey } from '../utils/storage.js';
 import { useActiveStore } from './active.js';
+import { usePrefsStore } from './prefs.js';
 
 /* Receive-area runtime state. The hot path mirrors the legacy renderer:
  * plain (non-reactive) pending queue -> rAF flush in batches of 40 into a
@@ -49,11 +50,21 @@ export const useMessagesStore = defineStore('messages', () => {
   const filterPanelShow = ref(false);
 
   const active = useActiveStore();
+  const prefs = usePrefsStore();
+
+  /* Settings-driven caps (settings 页「消息与缓存」); constants are defaults. */
+  const domLimit = computed(() => prefs.maxMessages || MAX_MESSAGES);
+  const cacheLimit = computed(() => prefs.cacheLimit || CACHE_LIMIT);
 
   let pending = []; // plain array, not reactive
   let cacheQueue = []; // newest arrivals for the local cache
   let rafId = null;
   let cacheTimer = null;
+
+  /* Lowering the retained-message cap applies to what is already rendered. */
+  watch(domLimit, (n) => {
+    if (msgs.value.length > n) msgs.value = msgs.value.slice(msgs.value.length - n);
+  });
 
   const activeSubs = computed(() => active.server?.subscribedTopics || []);
   /* Empty-state copy follows the legacy applyServerStatus wording. */
@@ -178,11 +189,12 @@ export const useMessagesStore = defineStore('messages', () => {
       noteSeenTopic(m.topic);
       cacheQueue.push(m);
     }
-    if (cacheQueue.length > CACHE_LIMIT * 2) {
-      cacheQueue.splice(0, cacheQueue.length - CACHE_LIMIT * 2);
+    if (cacheQueue.length > cacheLimit.value * 2) {
+      cacheQueue.splice(0, cacheQueue.length - cacheLimit.value * 2);
     }
     const next = [...msgs.value, ...batch];
-    msgs.value = next.length > MAX_MESSAGES ? next.slice(next.length - MAX_MESSAGES) : next;
+    const cap = domLimit.value;
+    msgs.value = next.length > cap ? next.slice(next.length - cap) : next;
     count.value += batch.length;
     rateCount.value += batch.length;
     scheduleCacheSave();
@@ -199,7 +211,7 @@ export const useMessagesStore = defineStore('messages', () => {
     cacheTimer = null;
     if (!serverId.value) return;
     try {
-      const slim = cacheQueue.slice(-CACHE_LIMIT).map((m) => ({
+      const slim = cacheQueue.slice(-cacheLimit.value).map((m) => ({
         ts: m.ts,
         topic: m.topic,
         partition: m.partition,

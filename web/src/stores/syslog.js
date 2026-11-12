@@ -35,7 +35,10 @@ export const useSyslogStore = defineStore('syslog', () => {
     writeJson(storageKeys.syslog, []);
   }
 
+  /* Returns false when there is nothing to export (or no DOM to download in). */
   function exportLog() {
+    if (!entries.value.length) return false;
+    if (typeof document === 'undefined') return false; // Node tests / SSR
     const pad = (n) => String(n).padStart(2, '0');
     const d = new Date();
     const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
@@ -46,6 +49,7 @@ export const useSyslogStore = defineStore('syslog', () => {
     a.download = `kafkadesk-${stamp}.log`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    return true;
   }
 
   return { entries, init, add, clear, exportLog };

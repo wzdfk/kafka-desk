@@ -4,6 +4,7 @@ import { NButton, NCheckbox, NIcon, NInput } from 'naive-ui';
 import { ChevronDownCircleOutline, ChevronUpCircleOutline, TrashOutline } from '@vicons/ionicons5';
 import { useActiveStore } from '../stores/active.js';
 import { useMessagesStore } from '../stores/messages.js';
+import { usePrefsStore } from '../stores/prefs.js';
 import { toast } from '../utils/toast.js';
 import MessageCard from './MessageCard.vue';
 import IconBtn from './IconBtn.vue';
@@ -13,6 +14,7 @@ import TopicFilterPanel from './TopicFilterPanel.vue';
  * message list with auto-scroll / pause / clear (legacy receive view). */
 const active = useActiveStore();
 const store = useMessagesStore();
+const prefs = usePrefsStore();
 const listEl = ref(null);
 
 const activeSubs = computed(() => active.server?.subscribedTopics || []);
@@ -136,7 +138,7 @@ onBeforeUnmount(() => clearInterval(rateTimer));
     </div>
 
     <div class="foot-info">
-      <span>本地缓存留存 {{ store.msgs.length }} 条，重启后恢复（最多 {{ 500 }} 条）</span>
+      <span>本地缓存留存 {{ Math.min(store.msgs.length, prefs.cacheLimit) }} 条，重启后恢复（最多 {{ prefs.cacheLimit }} 条）</span>
       <span v-if="store.paused" class="paused-hint">已暂停显示（仍在接收）</span>
     </div>
   </section>
