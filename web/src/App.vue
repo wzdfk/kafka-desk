@@ -23,16 +23,19 @@ import TopBar from './components/TopBar.vue';
 
 <style>
 .app-shell {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 .app-main {
   flex: 1;
+  min-height: 0;
   width: 100%;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 20px 24px 32px;
+  padding: 16px 24px 20px;
   box-sizing: border-box;
+  overflow-y: auto;
 }
 </style>

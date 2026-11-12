@@ -45,7 +45,7 @@ function clock(ts) {
       type="textarea"
       :value="store.draft.payload"
       placeholder='{"hello": "kafka"}'
-      :autosize="{ minRows: 7, maxRows: 14 }"
+      :autosize="false"
       @update:value="store.setPayload"
     />
 
@@ -83,16 +83,26 @@ function clock(ts) {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-height: 0;
 }
 .send-head { display: flex; align-items: center; justify-content: space-between; }
 .send-title { font-size: 13.5px; font-weight: 600; }
 .send-tools { display: flex; gap: 2px; }
 .key-input { font-variant-numeric: tabular-nums; }
+/* textarea 填满发送区剩余高度，随 40% 基准伸缩 */
+.payload-input {
+  flex: 1;
+  min-height: 0;
+}
+.payload-input :deep(.n-input__textarea-el),
 .payload-input :deep(textarea) {
+  height: 100%;
+  resize: none;
   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
   font-size: 12.5px;
   line-height: 1.55;
 }
+.send-foot { flex: 0 0 auto; }
 .send-foot {
   display: flex;
   align-items: center;

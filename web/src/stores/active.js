@@ -4,6 +4,7 @@ import { api } from '../api/api.js';
 import { debounce, readJson, storageKeys, writeJson } from '../utils/storage.js';
 import { toast } from '../utils/toast.js';
 import { useServersStore } from './servers.js';
+import { useMessagesStore } from './messages.js';
 
 export const CFG_SEC_DEFAULTS = { topic: true, misc: true, log: false };
 const RUN_LOG_MAX = 200;
@@ -137,6 +138,7 @@ export const useActiveStore = defineStore('active', () => {
     sendBusy.value = false;
     lastReceipt.value = null;
     restoreDraft(id);
+    await useMessagesStore().setServer(id);
     if (id) await loadCatalog(id, false);
   }
 

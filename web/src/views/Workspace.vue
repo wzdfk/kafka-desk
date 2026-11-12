@@ -1,13 +1,16 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { NButton, NEmpty } from 'naive-ui';
+import { NButton } from 'naive-ui';
 import { useServersStore } from '../stores/servers.js';
 import { useActiveStore } from '../stores/active.js';
+import { readJson, storageKeys, writeJson } from '../utils/storage.js';
 import ConfigPanel from '../components/ConfigPanel.vue';
 import SendPanel from '../components/SendPanel.vue';
+import ReceiveArea from '../components/ReceiveArea.vue';
+import Splitter from '../components/Splitter.vue';
 
-/* Workspace shell: config column + receive placeholder (T5) + send panel.
+/* Workspace shell: config column | splitter | (send panel / splitter / receive).
  * Route is the source of truth for the active server. */
 const route = useRoute();
 const router = useRouter();
@@ -16,6 +19,48 @@ const active = useActiveStore();
 
 const id = computed(() => String(route.params.id || ''));
 const server = computed(() => servers.byId(id.value));
+
+/* ---- splitter state: left column width (px) + send area share (%) ---- */
+const saved = readJson(storageKeys.splitter, {}) || {};
+const cfgW = ref(clampNum(saved.cfgW, 280, 560, 360));
+const sendPct = ref(clampNum(saved.sendPct, 18, 75, 40));
+const gridEl = ref(null);
+const mainEl = ref(null);
+const narrow = ref(typeof window !== 'undefined' ? window.innerWidth <= 960 : false);
+
+function clampNum(v, min, max, fallback) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+}
+
+function persistSplit() {
+  writeJson(storageKeys.splitter, { cfgW: cfgW.value, sendPct: sendPct.value });
+}
+
+const gridStyle = computed(() => (narrow.value
+  ? {}
+  : { gridTemplateColumns: `${cfgW.value}px 7px minmax(0, 1fr)` }));
+const sendStyle = computed(() => ({ flex: `0 0 ${sendPct.value}%` }));
+
+function onCfgDrag(ev) {
+  const rect = gridEl.value?.getBoundingClientRect();
+  if (!rect) return;
+  cfgW.value = clampNum(ev.clientX - rect.left, 280, 560, cfgW.value);
+  persistSplit();
+}
+
+function onSendDrag(ev) {
+  const rect = mainEl.value?.getBoundingClientRect();
+  if (!rect || !rect.height) return;
+  sendPct.value = clampNum(((ev.clientY - rect.top) / rect.height) * 100, 18, 75, sendPct.value);
+  persistSplit();
+}
+
+/* Collapse to a single column on narrow screens (splitter is hidden then). */
+const mq = typeof window !== 'undefined' ? window.matchMedia('(max-width: 960px)') : null;
+function onMq(e) { narrow.value = e.matches; }
+onMounted(() => mq && mq.addEventListener('change', onMq));
+onBeforeUnmount(() => mq && mq.removeEventListener('change', onMq));
 
 watch([id, () => servers.loaded], ([val, loaded]) => {
   if (!val || !loaded) return; // wait until the server list has arrived
@@ -61,55 +106,55 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey));
       </div>
     </header>
 
-    <div class="ws-grid">
+    <div ref="gridEl" class="ws-grid" :style="gridStyle">
       <ConfigPanel />
-      <div class="ws-main">
-        <div class="ws-receive">
-          <n-empty
-            class="ws-empty"
-            :description="active.selectedTopics.length
-              ? '已选主题，可订阅后在此查看消息（接收区 T5 实现）'
-              : '在左侧配置区勾选主题，然后连接并订阅'"
-          />
-        </div>
-        <SendPanel />
+      <Splitter v-if="!narrow" @drag="onCfgDrag" />
+      <div ref="mainEl" class="ws-main">
+        <SendPanel :style="sendStyle" />
+        <Splitter horizontal @drag="onSendDrag" />
+        <ReceiveArea />
       </div>
     </div>
   </section>
 </template>
 
 <style scoped>
+.workspace {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 .ws-head {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 .ws-name { font-size: 19px; font-weight: 700; margin: 0; }
 .ws-brokers { font-size: 12.5px; opacity: 0.55; }
 .ws-actions { display: flex; align-items: center; gap: 10px; }
 .ws-grid {
+  flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: 360px minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
+  column-gap: 0;
 }
+.ws-grid > :deep(.config-card) { height: 100%; min-height: 0; }
 @media (max-width: 960px) {
   .ws-grid { grid-template-columns: 1fr; }
 }
 .ws-main {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0;
   min-width: 0;
+  min-height: 0;
 }
-.ws-receive {
-  flex: 1;
-  min-height: 260px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.ws-empty { opacity: 0.7; }
+/* 发送区/接收区由 Splitter 调节（默认 4:6），各自内部滚动 */
+.ws-main > :deep(.send-panel) { min-height: 0; }
+.ws-main > :deep(.receive) { flex: 1 1 0; min-height: 0; }
 </style>

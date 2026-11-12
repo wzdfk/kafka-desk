@@ -6,6 +6,7 @@ import { LEGACY_KEYS, readJson, removeServerLocal, storageKeys, writeJson } from
 import { toast } from '../utils/toast.js';
 import { useSyslogStore } from './syslog.js';
 import { useActiveStore } from './active.js';
+import { useMessagesStore } from './messages.js';
 
 const TABS_LIMIT = 20;
 
@@ -98,7 +99,7 @@ export const useServersStore = defineStore('servers', () => {
           useActiveStore().pushRunLog({ ts, level, text });
         }
       },
-      onMessages: () => { /* consumed by the workspace store (T5) */ },
+      onMessages: (arr) => { useMessagesStore().ingest(arr); },
       onAppError: handleAppError,
       onOpen: () => { sseConnected.value = true; },
       onError: () => {

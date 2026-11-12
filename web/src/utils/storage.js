@@ -7,6 +7,7 @@ export const storageKeys = {
   syslog: 'kafka-desk-syslog',
   openTabs: 'kafka-desk-open-tabs',
   cfgSections: 'kafka-desk-cfg-sections',
+  splitter: 'kafka-desk-splitter',
   draft: (id) => `kafka-desk-draft.${id}`,
   messages: (id) => `kafka-desk-messages.${id}`,
   topicFilter: (id) => `kafka-desk-topic-filter.${id}`,

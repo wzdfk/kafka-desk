@@ -48,7 +48,7 @@ const saveHintClass = computed(() => ({
 <template>
   <aside class="config-card">
     <AccordionSection
-      v-model:open="store.cfgSections.topic"
+      :open="store.cfgSections.topic"
       title="主题配置"
       :meta="topicMeta"
       @update:open="store.toggleSection('topic')"
@@ -77,7 +77,7 @@ const saveHintClass = computed(() => ({
 
       <div class="field">
         <div class="field-label-row">
-          <span class="field-label">接收主题（多选）</span>
+          <span class="field-label">接收主题（可多选）</span>
         </div>
         <n-input v-model:value="store.topicSearch" size="small" placeholder="搜索主题" clearable>
           <template #prefix>
@@ -128,7 +128,7 @@ const saveHintClass = computed(() => ({
     </AccordionSection>
 
     <AccordionSection
-      v-model:open="store.cfgSections.misc"
+      :open="store.cfgSections.misc"
       title="其他设置"
       :meta="gidMeta"
       @update:open="store.toggleSection('misc')"
@@ -153,7 +153,7 @@ const saveHintClass = computed(() => ({
     </AccordionSection>
 
     <AccordionSection
-      v-model:open="store.cfgSections.log"
+      :open="store.cfgSections.log"
       title="运行日志"
       :meta="logMeta"
       @update:open="store.toggleSection('log')"
