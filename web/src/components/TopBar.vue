@@ -76,12 +76,16 @@ function go(tab) {
 </template>
 
 <style scoped>
+/* macOS-style frosted bar: translucent fill, 20px blur, hairline separator. */
 .topbar {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 10px 24px;
-  border-bottom: 1px solid rgba(128, 128, 128, 0.18);
+  height: 52px;
+  padding: 0 20px;
+  background: var(--kd-topbar-bg);
+  border-bottom: 1px solid var(--kd-topbar-border);
   backdrop-filter: saturate(180%) blur(20px);
   position: sticky;
   top: 0;
@@ -119,18 +123,19 @@ function go(tab) {
   color: inherit;
   opacity: 0.72;
   white-space: nowrap;
+  transition: background 0.18s var(--kd-ease), opacity 0.18s var(--kd-ease);
 }
-.tab:hover { opacity: 1; }
+.tab:hover { opacity: 1; background: var(--kd-hover); }
 .tab.active {
   opacity: 1;
   font-weight: 600;
-  background: rgba(128, 128, 128, 0.14);
+  background: var(--kd-hover);
 }
 .tab-label { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
 .right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
 }
 </style>

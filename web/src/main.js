@@ -2,6 +2,7 @@
 import { createPinia } from 'pinia';
 import naive from 'naive-ui';
 import App from './App.vue';
+import './styles/base.css';
 import router from './router/index.js';
 import { initTheme } from './theme/index.js';
 import { usePrefsStore } from './stores/prefs.js';

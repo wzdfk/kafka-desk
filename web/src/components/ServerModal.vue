@@ -1,6 +1,8 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
-import { NButton, NForm, NFormItem, NInput, NModal } from 'naive-ui';
+import { NForm, NFormItem, NInput, NModal } from 'naive-ui';
+import { CheckmarkOutline, CloseOutline } from '@vicons/ionicons5';
+import IconBtn from './IconBtn.vue';
 import { useServersStore } from '../stores/servers';
 import { toast } from '../utils/toast';
 
@@ -85,8 +87,14 @@ async function save() {
     </n-form>
     <template #footer>
       <div class="modal-actions">
-        <n-button quaternary @click="close">取消</n-button>
-        <n-button type="primary" :loading="saving" @click="save">保存</n-button>
+        <IconBtn :icon="CloseOutline" title="取消" @click="close" />
+        <IconBtn
+          :icon="CheckmarkOutline"
+          title="保存并关闭"
+          type="primary"
+          :loading="saving"
+          @click="save"
+        />
       </div>
     </template>
   </n-modal>
@@ -95,7 +103,7 @@ async function save() {
 <style scoped>
 .server-modal { width: 480px; max-width: calc(100vw - 48px); }
 .modal-error {
-  color: #ff3b30;
+  color: var(--kd-red);
   font-size: 13px;
   margin-top: -6px;
 }

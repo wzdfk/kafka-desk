@@ -1,7 +1,8 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { NButton, useThemeVars } from 'naive-ui';
+import { NButton, NIcon, useThemeVars } from 'naive-ui';
+import { LinkOutline, UnlinkOutline } from '@vicons/ionicons5';
 import { useServersStore } from '../stores/servers.js';
 import { useActiveStore } from '../stores/active.js';
 import { readJson, storageKeys, writeJson } from '../utils/storage.js';
@@ -113,6 +114,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey));
           title="断开当前 Broker 连接"
           @click="active.disconnect()"
         >
+          <template #icon>
+            <n-icon :component="UnlinkOutline" />
+          </template>
           断开
         </n-button>
         <n-button
@@ -124,6 +128,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey));
           title="保存当前配置并连接 Broker"
           @click="active.connect()"
         >
+          <template #icon>
+            <n-icon :component="LinkOutline" />
+          </template>
           {{ active.connBusy ? '连接中…' : '连接' }}
         </n-button>
       </div>

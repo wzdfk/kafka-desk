@@ -1,9 +1,10 @@
 <script setup>
 import { computed } from 'vue';
-import { ChevronDownOutline } from '@vicons/ionicons5';
-import { NButton, NCheckbox, NIcon, NPopover } from 'naive-ui';
+import { CheckmarkDoneOutline, CloseOutline, FunnelOutline } from '@vicons/ionicons5';
+import { NBadge, NButton, NCheckbox, NIcon, NPopover } from 'naive-ui';
 import { useActiveStore } from '../stores/active.js';
 import { useMessagesStore } from '../stores/messages.js';
+import IconBtn from './IconBtn.vue';
 
 /* Legacy "按主题筛选 · 可多选" popover: checkbox grid over the full catalog
  * (∪ seen ∪ selected), with 全选 / 清除 actions and the hint footer. */
@@ -37,12 +38,18 @@ function clearAll() {
 <template>
   <n-popover trigger="click" placement="bottom-end" :width="640" scrollable>
     <template #trigger>
-      <n-button size="small" secondary>
-        {{ selectedCount ? `已选 ${selectedCount} 主题` : '全部主题' }}
-        <template #icon>
-          <n-icon :component="ChevronDownOutline" :size="13" />
-        </template>
-      </n-button>
+      <!-- Icon-only trigger; the selected count rides on a badge (R4). -->
+      <n-badge :value="selectedCount" :show="selectedCount > 0" :max="99" type="info">
+        <n-button
+          size="small"
+          circle
+          quaternary
+          :type="selectedCount ? 'primary' : 'default'"
+          :title="selectedCount ? `按主题筛选 · 已选 ${selectedCount} 个` : '按主题筛选 · 当前显示全部'"
+        >
+          <n-icon :component="FunnelOutline" :size="16" />
+        </n-button>
+      </n-badge>
     </template>
 
     <div class="tfp">
@@ -50,8 +57,8 @@ function clearAll() {
         <span class="tfp-title">按主题筛选 · 可多选</span>
         <span class="tfp-meta">{{ allTopics.length }}个主题 · 已选 {{ selectedCount }}</span>
         <span class="tfp-actions">
-          <n-button text size="tiny" @click="selectAll">全选</n-button>
-          <n-button text size="tiny" @click="clearAll">清除</n-button>
+          <IconBtn :icon="CheckmarkDoneOutline" title="全选主题" size="tiny" :icon-size="16" @click="selectAll" />
+          <IconBtn :icon="CloseOutline" title="清除筛选" size="tiny" :icon-size="16" @click="clearAll" />
         </span>
       </div>
       <div class="tfp-grid">

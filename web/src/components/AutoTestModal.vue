@@ -1,8 +1,10 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import { NButton, NInputNumber, NModal, NProgress, NSwitch } from 'naive-ui';
+import { NInputNumber, NModal, NProgress, NSwitch } from 'naive-ui';
+import { CloseOutline, PauseOutline, PlayOutline, StopCircleOutline } from '@vicons/ionicons5';
 import { useActiveStore } from '../stores/active.js';
 import { useAutomationStore } from '../stores/automation.js';
+import IconBtn from './IconBtn.vue';
 
 /* 自动化测试弹窗（legacy app.js:2064-2450）：总数制 / 时间制 / 随机
  * request_id / 暂停继续 / 连败 5 次熔断 / Broker 回执。 */
@@ -55,6 +57,19 @@ const randHint = computed(() => {
 const payloadText = computed(() => (auto.payloadOk
   ? `合法 JSON · ${auto.payloadBytes} B · Key ${(active.draft.key || '').trim() || '(无)'}`
   : 'JSON 不合法或为空，无法发送'));
+
+/* Pane actions are icon-only (R4): play / pause / stop, wording lives in the tooltip. */
+function toggleIcon(mode) {
+  const on = mode === 'count' ? auto.countActive : auto.timedActive;
+  if (!on) return PlayOutline;
+  return auto.paused ? PlayOutline : PauseOutline;
+}
+function toggleTitle(mode) {
+  const on = mode === 'count' ? auto.countActive : auto.timedActive;
+  const name = mode === 'count' ? '总数制' : '时间制';
+  if (!on) return `开始发送（${name}）`;
+  return auto.paused ? `继续发送（${name}）` : `暂停发送（${name}）`;
+}
 </script>
 
 <template>
@@ -155,19 +170,24 @@ const payloadText = computed(() => (auto.payloadOk
           <span class="progress-text">{{ auto.progress.done }} / {{ auto.progress.total || '—' }}</span>
         </div>
         <div class="pane-actions">
-          <n-button
+          <IconBtn
+            :icon="toggleIcon('count')"
+            :title="toggleTitle('count')"
             type="primary"
-            size="small"
-            round
+            size="medium"
+            :icon-size="20"
             :disabled="auto.running && !auto.countActive"
             :loading="auto.starting && !auto.running"
             @click="auto.toggle('count')"
-          >
-            {{ !auto.countActive ? '开始发送' : (auto.paused ? '继续发送' : '暂停发送') }}
-          </n-button>
-          <n-button size="small" round tertiary :disabled="!auto.countActive" @click="auto.stop('已手动停止')">
-            停止
-          </n-button>
+          />
+          <IconBtn
+            :icon="StopCircleOutline"
+            title="停止总数制发送"
+            size="medium"
+            :icon-size="20"
+            :disabled="!auto.countActive"
+            @click="auto.stop('已手动停止')"
+          />
         </div>
       </section>
 
@@ -191,19 +211,24 @@ const payloadText = computed(() => (auto.payloadOk
         </label>
         <div class="timed-note">预计速率 <b>{{ rate }}</b> 条/秒 · 持续发送无上限</div>
         <div class="pane-actions">
-          <n-button
+          <IconBtn
+            :icon="toggleIcon('timed')"
+            :title="toggleTitle('timed')"
             type="primary"
-            size="small"
-            round
+            size="medium"
+            :icon-size="20"
             :disabled="auto.running && !auto.timedActive"
             :loading="auto.starting && !auto.running"
             @click="auto.toggle('timed')"
-          >
-            {{ !auto.timedActive ? '开始发送' : (auto.paused ? '继续发送' : '暂停发送') }}
-          </n-button>
-          <n-button size="small" tertiary round :disabled="!auto.timedActive" @click="auto.stop('已手动停止')">
-            停止
-          </n-button>
+          />
+          <IconBtn
+            :icon="StopCircleOutline"
+            title="停止时间制发送"
+            size="medium"
+            :icon-size="20"
+            :disabled="!auto.timedActive"
+            @click="auto.stop('已手动停止')"
+          />
         </div>
       </section>
     </div>
@@ -223,7 +248,7 @@ const payloadText = computed(() => (auto.payloadOk
     <template #footer>
       <div class="am-foot">
         <span>关闭窗口不会停止发送，可在发送栏点「停止」结束</span>
-        <n-button size="small" round tertiary @click="show = false">关闭</n-button>
+        <IconBtn :icon="CloseOutline" title="关闭窗口（不影响发送）" @click="show = false" />
       </div>
     </template>
   </n-modal>
@@ -237,7 +262,7 @@ const payloadText = computed(() => (auto.payloadOk
   padding: 2px 9px;
   border-radius: 999px;
   background: rgba(52, 199, 89, 0.14);
-  color: #34c759;
+  color: var(--kd-green);
 }
 .am-badge.demo { background: rgba(175, 82, 222, 0.14); color: #af52de; }
 .am-rand {
@@ -245,7 +270,7 @@ const payloadText = computed(() => (auto.payloadOk
   gap: 10px;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(128, 128, 128, 0.16);
+  border: 1px solid var(--kd-card-border);
   cursor: pointer;
 }
 .am-rand.on { border-color: rgba(0, 122, 255, 0.45); background: rgba(0, 122, 255, 0.06); }
@@ -257,14 +282,14 @@ const payloadText = computed(() => (auto.payloadOk
 .am-row { display: flex; gap: 10px; font-size: 12.5px; }
 .am-row .k { width: 72px; opacity: 0.55; flex: 0 0 auto; }
 .am-row .v { flex: 1; word-break: break-all; font-variant-numeric: tabular-nums; }
-.am-row .v.bad { color: #ff3b30; }
+.am-row .v.bad { color: var(--kd-red); }
 .am-row .v.muted { opacity: 0.5; }
-.am-row .v.receipt { color: #34c759; }
+.am-row .v.receipt { color: var(--kd-green); }
 .am-tip { font-size: 11.5px; opacity: 0.5; margin: 4px 0 0; line-height: 1.55; }
 .am-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 720px) { .am-grid { grid-template-columns: 1fr; } }
 .am-pane {
-  border: 1px solid rgba(128, 128, 128, 0.16);
+  border: 1px solid var(--kd-card-border);
   border-radius: 12px;
   padding: 12px;
   display: flex;
@@ -279,7 +304,7 @@ const payloadText = computed(() => (auto.payloadOk
 .pane-desc { font-size: 12px; opacity: 0.6; margin: 0; line-height: 1.5; }
 .field { display: flex; flex-direction: column; gap: 4px; }
 .field-label { font-size: 12px; opacity: 0.7; }
-.field-label em { font-style: normal; color: #ff3b30; font-size: 11px; }
+.field-label em { font-style: normal; color: var(--kd-red); font-size: 11px; }
 .field-label .optional { opacity: 0.6; font-size: 11px; }
 .progress { display: flex; align-items: center; gap: 10px; }
 .progress :deep(.n-progress) { flex: 1; }
@@ -297,13 +322,13 @@ const payloadText = computed(() => (auto.payloadOk
   font-variant-numeric: tabular-nums;
 }
 .am-status .mode { font-weight: 600; opacity: 0.75; }
-.am-status .mode.running { color: #34c759; opacity: 1; }
-.am-status .mode.paused { color: #ff9500; opacity: 1; }
+.am-status .mode.running { color: var(--kd-green); opacity: 1; }
+.am-status .mode.paused { color: var(--kd-orange); opacity: 1; }
 .am-status .hint { opacity: 0.5; margin-left: auto; }
 .am-error {
   margin: 8px 0 0;
   font-size: 12.5px;
-  color: #ff3b30;
+  color: var(--kd-red);
 }
 .am-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .am-foot span { font-size: 12px; opacity: 0.5; }

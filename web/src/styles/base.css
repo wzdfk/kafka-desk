@@ -1,0 +1,118 @@
+/* Apple-style design tokens + global polish for every component.
+ * Theme switch is driven by <html data-theme="light|dark"> (theme/index.js),
+ * so tokens flip without any JS in the components. */
+:root {
+  --kd-accent: #0071e3;
+  --kd-green: #34c759;
+  --kd-orange: #ff9500;
+  --kd-red: #ff3b30;
+
+  --kd-radius-card: 14px;
+  --kd-radius-inner: 10px;
+  --kd-radius-pill: 999px;
+
+  /* cards: white on #f5f5f7 canvas (macOS window look) */
+  --kd-card-bg: #ffffff;
+  --kd-card-border: rgba(0, 0, 0, 0.07);
+  --kd-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --kd-card-shadow-hover: 0 8px 28px rgba(0, 0, 0, 0.1);
+
+  /* inner surfaces (textarea, log list, message rows) and row hover */
+  --kd-surface: rgba(0, 0, 0, 0.035);
+  --kd-hover: rgba(0, 0, 0, 0.045);
+  --kd-divider: rgba(0, 0, 0, 0.08);
+
+  --kd-topbar-bg: rgba(255, 255, 255, 0.72);
+  --kd-topbar-border: rgba(0, 0, 0, 0.06);
+
+  --kd-text-2: rgba(0, 0, 0, 0.62);
+  --kd-text-3: rgba(0, 0, 0, 0.45);
+
+  --kd-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  --kd-ease: cubic-bezier(0.32, 0.72, 0, 1);
+
+  color-scheme: light;
+}
+
+html[data-theme='dark'] {
+  --kd-accent: #0a84ff;
+  --kd-green: #30d158;
+  --kd-orange: #ff9f0a;
+  --kd-red: #ff453a;
+
+  --kd-card-bg: #1c1c1e;
+  --kd-card-border: rgba(255, 255, 255, 0.09);
+  --kd-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --kd-card-shadow-hover: 0 8px 28px rgba(0, 0, 0, 0.5);
+
+  --kd-surface: rgba(255, 255, 255, 0.05);
+  --kd-hover: rgba(255, 255, 255, 0.07);
+  --kd-divider: rgba(255, 255, 255, 0.1);
+
+  --kd-topbar-bg: rgba(22, 22, 24, 0.72);
+  --kd-topbar-border: rgba(255, 255, 255, 0.08);
+
+  --kd-text-2: rgba(255, 255, 255, 0.66);
+  --kd-text-3: rgba(255, 255, 255, 0.45);
+
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  transition: background-color 0.24s var(--kd-ease), color 0.24s var(--kd-ease);
+}
+
+::selection {
+  background: rgba(0, 113, 227, 0.22);
+}
+
+/* Thin, self-effacing scrollbars (Apple look). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(128, 128, 128, 0.35) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.32);
+  background-clip: content-box;
+  border: 3px solid transparent;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.5);
+  background-clip: content-box;
+}
+
+/* One consistent keyboard focus ring everywhere. */
+:focus-visible {
+  outline: 2px solid var(--kd-accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Respect the OS "reduce motion" setting. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

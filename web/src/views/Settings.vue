@@ -2,11 +2,13 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
-  NButton, NCheckbox, NIcon, NInput, NSelect,
+  NCheckbox, NIcon, NInput, NSelect,
 } from 'naive-ui';
 import {
-  ColorPaletteOutline, InformationCircleOutline, LayersOutline, TerminalOutline,
+  ArrowBackOutline, ColorPaletteOutline, DownloadOutline, InformationCircleOutline,
+  LayersOutline, TerminalOutline, TrashOutline,
 } from '@vicons/ionicons5';
+import IconBtn from '../components/IconBtn.vue';
 import { usePrefsStore, PREF_CACHE_LIMIT, PREF_MAX_MESSAGES } from '../stores/prefs.js';
 import { useSyslogStore } from '../stores/syslog.js';
 import { useServersStore } from '../stores/servers.js';
@@ -212,7 +214,7 @@ function back() {
           <h1>{{ meta.title }}</h1>
           <p>{{ meta.desc }}</p>
         </div>
-        <n-button size="small" tertiary @click="back">返回</n-button>
+        <IconBtn :icon="ArrowBackOutline" title="返回上一页" @click="back" />
       </header>
 
       <div class="set-scroll">
@@ -309,7 +311,7 @@ function back() {
                 </div>
               </div>
               <div class="row-ctl">
-                <n-button size="small" tertiary @click="clearCache">清理</n-button>
+                <IconBtn :icon="TrashOutline" title="清理本机缓存" @click="clearCache" />
               </div>
             </div>
             <p class="note">「清理」不会退出当前订阅，也不会影响已经发出去的消息。</p>
@@ -341,8 +343,8 @@ function back() {
               />
               <n-checkbox v-model:checked="logFollow">自动滚动</n-checkbox>
               <span class="spacer" />
-              <n-button size="tiny" tertiary @click="exportLogs">导出</n-button>
-              <n-button size="tiny" tertiary @click="clearLogs">清空</n-button>
+              <IconBtn :icon="DownloadOutline" title="导出日志" @click="exportLogs" />
+              <IconBtn :icon="TrashOutline" title="清空日志" @click="clearLogs" />
             </div>
 
             <div ref="logListEl" class="log-list">
@@ -442,12 +444,12 @@ function back() {
   cursor: pointer;
   opacity: 0.72;
 }
-.nav-item:hover { opacity: 1; background: rgba(128, 128, 128, 0.08); }
+.nav-item:hover { opacity: 1; background: var(--kd-hover); }
 .nav-item.is-active {
   opacity: 1;
   font-weight: 600;
-  background: rgba(0, 122, 255, 0.12);
-  color: #007aff;
+  background: rgba(0, 113, 227, 0.12);
+  color: var(--kd-accent);
 }
 .nav-foot {
   margin-top: auto;
@@ -480,9 +482,10 @@ function back() {
 }
 .pane { display: flex; flex-direction: column; gap: 12px; }
 .card {
-  background: rgba(128, 128, 128, 0.05);
-  border: 1px solid rgba(128, 128, 128, 0.14);
-  border-radius: 14px;
+  background: var(--kd-card-bg);
+  border: 1px solid var(--kd-card-border);
+  border-radius: var(--kd-radius-card);
+  box-shadow: var(--kd-card-shadow);
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -510,7 +513,7 @@ function back() {
   cursor: pointer;
 }
 .theme-opt:hover { border-color: rgba(0, 122, 255, 0.4); }
-.theme-opt.is-on { border-color: #007aff; box-shadow: 0 0 0 1px #007aff inset; }
+.theme-opt.is-on { border-color: var(--kd-accent); box-shadow: 0 0 0 1px var(--kd-accent) inset; }
 .tp {
   display: block;
   height: 62px;
@@ -541,7 +544,7 @@ function back() {
   top: 8px;
   right: 10px;
   font-size: 12px;
-  color: #007aff;
+  color: var(--kd-accent);
   opacity: 0;
 }
 .theme-opt.is-on .theme-check { opacity: 1; }
@@ -560,7 +563,7 @@ function back() {
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(128, 128, 128, 0.14);
+  border-bottom: 1px solid var(--kd-divider);
   flex-wrap: wrap;
 }
 .levels { display: flex; gap: 2px; }
@@ -575,7 +578,7 @@ function back() {
   opacity: 0.6;
 }
 .lv:hover { opacity: 1; }
-.lv.is-on { opacity: 1; background: rgba(128, 128, 128, 0.16); font-weight: 600; }
+.lv.is-on { opacity: 1; background: var(--kd-hover); font-weight: 600; }
 .log-search { width: 220px; }
 .spacer { flex: 1; }
 .log-list {
@@ -595,8 +598,8 @@ function back() {
 .log-line:hover { background: rgba(128, 128, 128, 0.07); }
 .log-line .t { opacity: 0.45; flex: 0 0 auto; font-variant-numeric: tabular-nums; }
 .log-line .lv-tag { flex: 0 0 38px; font-weight: 600; opacity: 0.7; }
-.log-line.lv-warn .lv-tag { color: #ff9500; opacity: 1; }
-.log-line.lv-error .lv-tag { color: #ff3b30; opacity: 1; }
+.log-line.lv-warn .lv-tag { color: var(--kd-orange); opacity: 1; }
+.log-line.lv-error .lv-tag { color: var(--kd-red); opacity: 1; }
 .log-line .src {
   flex: 0 0 110px;
   opacity: 0.6;
@@ -612,7 +615,7 @@ function back() {
   justify-content: space-between;
   gap: 12px;
   padding: 8px 12px;
-  border-top: 1px solid rgba(128, 128, 128, 0.14);
+  border-top: 1px solid var(--kd-divider);
   font-size: 11.5px;
   opacity: 0.5;
 }

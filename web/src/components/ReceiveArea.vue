@@ -1,7 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { NButton, NCheckbox, NIcon, NInput } from 'naive-ui';
-import { ChevronDownCircleOutline, ChevronUpCircleOutline, TrashOutline } from '@vicons/ionicons5';
+import { NCheckbox, NInput } from 'naive-ui';import { TrashOutline } from '@vicons/ionicons5';
 import { useActiveStore } from '../stores/active.js';
 import { useMessagesStore } from '../stores/messages.js';
 import { usePrefsStore } from '../stores/prefs.js';
@@ -87,17 +86,15 @@ onBeforeUnmount(() => clearInterval(rateTimer));
         <span class="t-name">{{ t }}</span>
         <span class="t-state">{{ (active.server?.subscribedTopics || []).includes(t) ? '已订阅' : '订阅' }}</span>
       </button>
-      <n-button
-        size="tiny"
-        tertiary
+      <n-checkbox
+        class="sub-all"
+        :checked="allOn"
         :disabled="!active.selectedTopics.length || active.busyTopics.size > 0"
-        @click="toggleAll"
+        :title="allOn ? '取消全部订阅' : '全部订阅'"
+        @update:checked="toggleAll"
       >
-        <template #icon>
-          <n-icon :component="allOn ? ChevronUpCircleOutline : ChevronDownCircleOutline" />
-        </template>
         {{ allOn ? '取消全部订阅' : '全部订阅' }}
-      </n-button>
+      </n-checkbox>
     </div>
 
     <div class="filter-row">
@@ -153,9 +150,10 @@ onBeforeUnmount(() => clearInterval(rateTimer));
   min-height: 0;
   flex: 1;
   box-sizing: border-box;
-  background: rgba(128, 128, 128, 0.05);
-  border: 1px solid rgba(128, 128, 128, 0.14);
-  border-radius: 14px;
+  background: var(--kd-card-bg);
+  border: 1px solid var(--kd-card-border);
+  border-radius: var(--kd-radius-card);
+  box-shadow: var(--kd-card-shadow);
   padding: 12px 14px;
   margin-bottom: -12px;
 }
@@ -182,24 +180,26 @@ onBeforeUnmount(() => clearInterval(rateTimer));
   gap: 8px;
 }
 .topic-bar-empty { font-size: 12.5px; opacity: 0.5; }
+.sub-all { font-size: 12.5px; white-space: nowrap; }
 .topic-btn {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   padding: 4px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(128, 128, 128, 0.25);
-  background: none;
+  border-radius: var(--kd-radius-pill);
+  border: 1px solid var(--kd-card-border);
+  background: var(--kd-surface);
   font-size: 12.5px;
   cursor: pointer;
   color: inherit;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.16s var(--kd-ease), border-color 0.16s var(--kd-ease);
 }
+.topic-btn:hover { background: var(--kd-hover); }
 .topic-btn:disabled { opacity: 0.55; cursor: wait; }
 .topic-btn .t-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(128, 128, 128, 0.4); }
-.topic-btn.active { border-color: #34c759; }
-.topic-btn.active .t-dot { background: #34c759; }
-.topic-btn.active .t-state { color: #34c759; }
+.topic-btn.active { border-color: var(--kd-green); }
+.topic-btn.active .t-dot { background: var(--kd-green); }
+.topic-btn.active .t-state { color: var(--kd-green); }
 .t-name { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .t-state { font-size: 11px; opacity: 0.65; }
 .filter-row {
@@ -237,7 +237,7 @@ onBeforeUnmount(() => clearInterval(rateTimer));
   opacity: 0.55;
   font-variant-numeric: tabular-nums;
 }
-.drop-hint { color: #ff9500; opacity: 1; }
+.drop-hint { color: var(--kd-orange); opacity: 1; }
 .rate { margin-left: auto; }
-.paused-hint { color: #007aff; opacity: 1; }
+.paused-hint { color: var(--kd-accent); opacity: 1; }
 </style>

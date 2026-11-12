@@ -1,7 +1,8 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { AddOutline, RefreshOutline, SearchOutline } from '@vicons/ionicons5';
-import { NButton, NCheckbox, NIcon, NInput, NSelect, NSwitch } from 'naive-ui';
+import { TrashOutline } from '@vicons/ionicons5';
+import { NCheckbox, NIcon, NInput, NSelect, NSwitch } from 'naive-ui';
 import { useActiveStore } from '../stores/active.js';
 import AccordionSection from './AccordionSection.vue';
 import IconBtn from './IconBtn.vue';
@@ -56,7 +57,7 @@ const saveHintClass = computed(() => ({
       <div class="field">
         <div class="field-label-row">
           <span class="field-label">发送主题</span>
-          <IconBtn :icon="RefreshOutline" title="刷新主题列表" :disabled="refreshBusy" @click="refreshTopics" />
+          <IconBtn :icon="RefreshOutline" title="刷新主题列表" :loading="refreshBusy" @click="refreshTopics" />
         </div>
         <n-input
           :value="store.config.sendTopic"
@@ -117,12 +118,7 @@ const saveHintClass = computed(() => ({
             placeholder="字母/数字/点/下划线/连字符"
             @keydown.enter.prevent="store.addCustomTopic()"
           />
-          <n-button size="small" tertiary @click="store.addCustomTopic()">
-            <template #icon>
-              <n-icon :component="AddOutline" />
-            </template>
-            添加
-          </n-button>
+          <IconBtn :icon="AddOutline" title="添加自定义主题" @click="store.addCustomTopic()" />
         </div>
       </div>
     </AccordionSection>
@@ -158,6 +154,15 @@ const saveHintClass = computed(() => ({
       :meta="logMeta"
       @update:open="store.toggleSection('log')"
     >
+      <template #actions>
+        <IconBtn
+          :icon="TrashOutline"
+          title="清空运行日志"
+          size="tiny"
+          :icon-size="15"
+          @click="store.clearRunLog()"
+        />
+      </template>
       <RunLogPanel />
     </AccordionSection>
   </aside>
@@ -165,9 +170,10 @@ const saveHintClass = computed(() => ({
 
 <style scoped>
 .config-card {
-  background: rgba(128, 128, 128, 0.05);
-  border: 1px solid rgba(128, 128, 128, 0.14);
-  border-radius: 14px;
+  background: var(--kd-card-bg);
+  border: 1px solid var(--kd-card-border);
+  border-radius: var(--kd-radius-card);
+  box-shadow: var(--kd-card-shadow);
   padding: 4px 14px 6px;
   display: flex;
   flex-direction: column;
@@ -181,8 +187,9 @@ const saveHintClass = computed(() => ({
 .topic-list {
   max-height: 200px;
   overflow-y: auto;
-  border: 1px solid rgba(128, 128, 128, 0.16);
-  border-radius: 10px;
+  background: var(--kd-surface);
+  border: 1px solid var(--kd-card-border);
+  border-radius: var(--kd-radius-inner);
   padding: 4px;
 }
 .topic-empty { font-size: 12px; opacity: 0.5; padding: 16px 8px; text-align: center; }
@@ -195,15 +202,16 @@ const saveHintClass = computed(() => ({
   cursor: pointer;
   font-size: 13px;
 }
-.topic-row:hover { background: rgba(128, 128, 128, 0.09); }
+.topic-row { transition: background 0.16s var(--kd-ease); }
+.topic-row:hover { background: var(--kd-hover); }
 .topic-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sub-dot { width: 6px; height: 6px; border-radius: 50%; background: transparent; flex-shrink: 0; }
-.topic-row.is-subscribed .sub-dot { background: #34c759; }
-.topic-row.is-subscribed .topic-name { color: #34c759; }
+.topic-row.is-subscribed .sub-dot { background: var(--kd-green); }
+.topic-row.is-subscribed .topic-name { color: var(--kd-green); }
 .custom-row { display: flex; gap: 8px; }
 .switch-row { flex-direction: row; align-items: center; justify-content: space-between; }
 .save-hint { font-size: 12px; opacity: 0.5; min-height: 16px; transition: color 0.2s ease; }
 .save-hint.is-busy { opacity: 0.7; }
-.save-hint.is-ok { color: #34c759; opacity: 1; }
-.save-hint.is-err { color: #ff3b30; opacity: 1; }
+.save-hint.is-ok { color: var(--kd-green); opacity: 1; }
+.save-hint.is-err { color: var(--kd-red); opacity: 1; }
 </style>

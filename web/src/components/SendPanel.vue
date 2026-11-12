@@ -1,7 +1,10 @@
 <script setup>
 import { ref } from 'vue';
-import { DocumentTextOutline, PlayOutline, SparklesOutline, StopCircleOutline, SyncOutline, TrashOutline } from '@vicons/ionicons5';
-import { NButton, NInput } from 'naive-ui';
+import {
+  DocumentTextOutline, PlayOutline, SendOutline, SparklesOutline, StopCircleOutline,
+  SyncOutline, TrashOutline,
+} from '@vicons/ionicons5';
+import { NButton, NIcon, NInput } from 'naive-ui';
 import { useActiveStore } from '../stores/active.js';
 import { useAutomationStore } from '../stores/automation.js';
 import AutoTestModal from './AutoTestModal.vue';
@@ -83,6 +86,9 @@ function clock(ts) {
         title="发送到发送主题（Ctrl+Enter）"
         @click="store.send()"
       >
+        <template #icon>
+          <n-icon :component="SendOutline" />
+        </template>
         发送
       </n-button>
     </div>
@@ -99,14 +105,16 @@ function clock(ts) {
 
 <style scoped>
 .send-panel {
-  background: rgba(128, 128, 128, 0.05);
-  border: 1px solid rgba(128, 128, 128, 0.14);
-  border-radius: 14px;
+  background: var(--kd-card-bg);
+  border: 1px solid var(--kd-card-border);
+  border-radius: var(--kd-radius-card);
+  box-shadow: var(--kd-card-shadow);
   padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-height: 0;
+  box-sizing: border-box;
 }
 .send-head { display: flex; align-items: center; gap: 10px; }
 .send-title { font-size: 13.5px; font-weight: 600; }
@@ -116,11 +124,11 @@ function clock(ts) {
   padding: 2px 9px;
   border-radius: 999px;
   background: rgba(52, 199, 89, 0.14);
-  color: #34c759;
+  color: var(--kd-green);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.auto-chip.paused { background: rgba(255, 149, 0, 0.14); color: #ff9500; }
+.auto-chip.paused { background: rgba(255, 149, 0, 0.14); color: var(--kd-orange); }
 .key-input { font-variant-numeric: tabular-nums; }
 /* textarea 填满发送区剩余高度，随 40% 基准伸缩 */
 .payload-input {
@@ -143,10 +151,15 @@ function clock(ts) {
   font-size: 12px;
 }
 .json-state.is-empty { opacity: 0.45; }
-.json-state.is-ok { color: #34c759; }
-.json-state.is-bad { color: #ff3b30; }
+.json-state.is-ok { color: var(--kd-green); }
+.json-state.is-bad { color: var(--kd-red); }
 .byte-count { opacity: 0.55; font-variant-numeric: tabular-nums; }
 .draft-state { flex: 1; text-align: right; opacity: 0.5; }
-.draft-state.is-error { color: #ff9500; opacity: 1; }
-.receipt { font-size: 12px; opacity: 0.6; font-variant-numeric: tabular-nums; }
+.draft-state.is-error { color: var(--kd-orange); opacity: 1; }
+.receipt {
+  font-size: 12px;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--kd-mono);
+}
 </style>

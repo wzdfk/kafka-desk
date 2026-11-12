@@ -1,5 +1,5 @@
 <script setup>
-import { onBeforeUnmount } from 'vue';
+import { onBeforeUnmount, ref } from 'vue';
 
 /* Draggable divider. `horizontal` = a row divider (adjusts height, row-resize);
  * default = a column divider (adjusts width, col-resize). Emits `drag` with
@@ -10,6 +10,7 @@ const props = defineProps({
 const emit = defineEmits(['drag']);
 
 let moving = false;
+const dragging = ref(false);
 
 function onMouseMove(ev) {
   if (moving) emit('drag', ev);
@@ -17,6 +18,7 @@ function onMouseMove(ev) {
 
 function onMouseUp() {
   moving = false;
+  dragging.value = false;
   window.removeEventListener('mousemove', onMouseMove);
   window.removeEventListener('mouseup', onMouseUp);
   document.body.classList.remove('is-splitting');
@@ -25,6 +27,7 @@ function onMouseUp() {
 function onDown(e) {
   e.preventDefault();
   moving = true;
+  dragging.value = true;
   document.body.classList.add('is-splitting');
   window.addEventListener('mousemove', onMouseMove);
   window.addEventListener('mouseup', onMouseUp);
@@ -39,8 +42,9 @@ onBeforeUnmount(() => {
 <template>
   <div
     class="splitter"
-    :class="{ horizontal: props.horizontal }"
+    :class="{ horizontal: props.horizontal, dragging }"
     role="separator"
+    :aria-orientation="props.horizontal ? 'horizontal' : 'vertical'"
     @mousedown="onDown"
   >
     <span class="grip" />
@@ -64,9 +68,11 @@ onBeforeUnmount(() => {
 .grip {
   border-radius: 999px;
   background: rgba(128, 128, 128, 0.28);
-  transition: background 0.15s ease;
+  transition: background 0.16s var(--kd-ease), transform 0.16s var(--kd-ease);
 }
-.splitter:hover .grip { background: #007aff; }
+.splitter:hover .grip,
+.splitter.dragging .grip { background: var(--kd-accent); }
+.splitter:hover .grip { transform: scale(1.15); }
 /* vertical divider: a 3px × 28px bar */
 .grip { width: 3px; height: 28px; }
 /* horizontal divider: a bar 28px wide and 3px high */

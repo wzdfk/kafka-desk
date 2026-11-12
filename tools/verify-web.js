@@ -18,7 +18,7 @@ function check(name, ok, extra = '') {
 }
 
 const SRC_FILES = [
-  'src/main.js', 'src/App.vue', 'src/theme/index.js', 'src/theme/overrides.js',
+  'src/main.js', 'src/App.vue', 'src/styles/base.css', 'src/theme/index.js', 'src/theme/overrides.js',
   'src/api/api.js', 'src/api/sse.js', 'src/utils/storage.js', 'src/utils/toast.js', 'src/utils/dialog.js',
   'src/stores/servers.js', 'src/stores/prefs.js', 'src/stores/syslog.js', 'src/stores/active.js',
   'src/stores/messages.js', 'src/stores/automation.js',

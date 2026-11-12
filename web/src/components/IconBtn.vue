@@ -8,22 +8,44 @@ defineProps({
   title: { type: String, default: '' },
   size: { type: String, default: 'small' },
   type: { type: String, default: 'default' },
+  iconSize: { type: Number, default: 18 },
   spin: { type: Boolean, default: false },
+  disabled: { type: Boolean, default: false },
+  loading: { type: Boolean, default: false },
 });
 defineEmits(['click']);
 </script>
 
 <template>
-  <n-tooltip v-if="title" trigger="hover" placement="bottom">
+  <!-- Disabled buttons get no tooltip: nothing actionable to explain. -->
+  <n-tooltip v-if="title && !disabled" trigger="hover" placement="bottom">
     <template #trigger>
-      <n-button quaternary circle :size="size" :type="type" :aria-label="title" @click="$emit('click')">
-        <n-icon :component="icon" :size="18" :class="{ spin }" />
+      <n-button
+        quaternary
+        circle
+        :size="size"
+        :type="type"
+        :aria-label="title"
+        :loading="loading"
+        @click="$emit('click')"
+      >
+        <n-icon :component="icon" :size="iconSize" :class="{ spin }" />
       </n-button>
     </template>
     {{ title }}
   </n-tooltip>
-  <n-button v-else quaternary circle :size="size" :type="type" :aria-label="title" @click="$emit('click')">
-    <n-icon :component="icon" :size="18" :class="{ spin }" />
+  <n-button
+    v-else
+    quaternary
+    circle
+    :size="size"
+    :type="type"
+    :aria-label="title"
+    :disabled="disabled"
+    :loading="loading"
+    @click="$emit('click')"
+  >
+    <n-icon :component="icon" :size="iconSize" :class="{ spin }" />
   </n-button>
 </template>
 

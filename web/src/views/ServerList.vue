@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { NButton, NEmpty, NIcon, NSpin, useThemeVars } from 'naive-ui';
+import { NButton, NEmpty, NIcon, NSpin } from 'naive-ui';
 import { AddCircleOutline, CreateOutline, EnterOutline, TrashOutline } from '@vicons/ionicons5';
 import { useServersStore } from '../stores/servers';
 import { confirmDialog } from '../utils/dialog';
@@ -11,16 +11,11 @@ import IconBtn from '../components/IconBtn.vue';
 
 const router = useRouter();
 const store = useServersStore();
-const themeVars = useThemeVars();
 
 const modalShow = ref(false);
 const editTarget = ref(null);
 
 const servers = computed(() => store.list);
-const cardStyle = computed(() => ({
-  background: themeVars.value.cardColor,
-  borderColor: themeVars.value.dividerColor,
-}));
 
 function openCreate() {
   editTarget.value = null;
@@ -91,7 +86,6 @@ function onCreated(server) {
           v-for="s in servers"
           :key="s.id"
           class="server-card"
-          :style="cardStyle"
           role="button"
           tabindex="0"
           @click="enter(s)"
@@ -140,15 +134,18 @@ function onCreated(server) {
   gap: 16px;
 }
 .server-card {
-  background: var(--card-bg, rgba(255, 255, 255, 0.9));
-  border: 1px solid rgba(128, 128, 128, 0.16);
-  border-radius: 14px;
+  background: var(--kd-card-bg);
+  border: 1px solid var(--kd-card-border);
+  border-radius: var(--kd-radius-card);
+  box-shadow: var(--kd-card-shadow);
   padding: 16px 18px;
   cursor: pointer;
-  transition: box-shadow 0.18s ease, transform 0.18s ease;
+  transition: box-shadow 0.2s var(--kd-ease), transform 0.2s var(--kd-ease),
+    border-color 0.2s var(--kd-ease);
 }
 .server-card:hover {
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--kd-card-shadow-hover);
+  border-color: rgba(0, 113, 227, 0.28);
   transform: translateY(-1px);
 }
 .card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
@@ -168,8 +165,8 @@ function onCreated(server) {
 .card-meta { font-size: 12px; opacity: 0.5; margin-top: 8px; }
 .card-actions { display: flex; justify-content: flex-end; gap: 2px; margin-top: 8px; }
 .add-card {
-  border: 1.5px dashed rgba(128, 128, 128, 0.35);
-  border-radius: 14px;
+  border: 1.5px dashed var(--kd-card-border);
+  border-radius: var(--kd-radius-card);
   min-height: 132px;
   display: flex;
   flex-direction: column;
@@ -179,8 +176,8 @@ function onCreated(server) {
   cursor: pointer;
   opacity: 0.6;
   font-size: 13px;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.16s var(--kd-ease), background 0.16s var(--kd-ease);
 }
-.add-card:hover { opacity: 1; }
+.add-card:hover { opacity: 1; background: var(--kd-hover); }
 .empty { margin-top: 24px; }
 </style>
