@@ -67,7 +67,7 @@ async function save() {
     :show="show"
     preset="card"
     :title="isEdit ? '编辑 Broker' : '添加 Broker'"
-    class="server-modal"
+    :style="{ width: '560px', maxWidth: 'calc(100vw - 240px)' }"
     @update:show="(v) => emit('update:show', v)"
     @esc="close"
   >
@@ -101,7 +101,6 @@ async function save() {
 </template>
 
 <style scoped>
-.server-modal { width: 480px; max-width: calc(100vw - 48px); }
 .modal-error {
   color: var(--kd-red);
   font-size: 13px;
