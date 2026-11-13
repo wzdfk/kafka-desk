@@ -47,7 +47,8 @@ const saveHintClass = computed(() => ({
 </script>
 
 <template>
-  <aside class="config-card">
+  <aside class="config-card" :class="{ 'log-open': store.cfgSections.log }">
+    <div class="cfg-scroll">
     <AccordionSection
       :open="store.cfgSections.topic"
       title="主题配置"
@@ -147,7 +148,9 @@ const saveHintClass = computed(() => ({
       </div>
       <div class="save-hint" :class="saveHintClass">{{ store.saveStateText || '改动会自动保存' }}</div>
     </AccordionSection>
+    </div>
 
+    <div class="cfg-log">
     <AccordionSection
       :open="store.cfgSections.log"
       title="运行日志"
@@ -165,10 +168,14 @@ const saveHintClass = computed(() => ({
       </template>
       <RunLogPanel />
     </AccordionSection>
+    </div>
   </aside>
 </template>
 
 <style scoped>
+/* 左侧卡片高度由网格行固定（同旧版 .config-card）：
+ * - 日志折叠：整卡滚动，保持原行为；
+ * - 日志展开：上两块合在 .cfg-scroll 内自行滚动，日志块吃掉剩余高度且至少 50%。 */
 .config-card {
   background: var(--kd-card-bg);
   border: 1px solid var(--kd-card-border);
@@ -177,7 +184,34 @@ const saveHintClass = computed(() => ({
   padding: 4px 14px 6px;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-height: 0;
   overflow-y: auto;
+}
+.config-card.log-open { overflow: hidden; }
+.cfg-scroll,
+.cfg-log {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  min-width: 0;
+  margin: 0 -6px;
+  padding: 0 6px;
+}
+.cfg-log { padding-bottom: 6px; }
+.config-card.log-open .cfg-scroll {
+  flex: 0 1 auto;
+  min-height: 92px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.config-card.log-open .cfg-log { flex: 1 1 auto; min-height: 50%; }
+.cfg-log :deep(.acc) { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+.config-card.log-open .cfg-log :deep(.acc-body) {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 .field { margin-bottom: 14px; display: flex; flex-direction: column; gap: 6px; }
 .field:last-child { margin-bottom: 4px; }

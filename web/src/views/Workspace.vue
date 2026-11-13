@@ -161,7 +161,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey));
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 12px;
+  margin-top: -6px;
+  margin-bottom: 6px;
 }
 /* 标题行不换行：名称与地址同一行，超长各自省略号截断 */
 .ws-title {

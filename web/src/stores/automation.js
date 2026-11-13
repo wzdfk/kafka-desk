@@ -328,7 +328,8 @@ export const useAutomationStore = defineStore('automation', () => {
       ? `上轮：成功 ${lastSent} · 失败 ${lastFailed} · 进度已清空`
       : '';
     if (wasRunning && reason) {
-      const bad = /失败|非法|超时|错误/.test(reason);
+      // 完成文案含「失败 0 条」统计，不能仅凭「失败」二字判错；以实际失败数为准。
+      const bad = /非法|超时|错误/.test(reason) || (lastFailed > 0 && /失败/.test(reason));
       active.pushRunLog({ level: bad ? 'error' : 'info', text: `自动化发送停止：${reason}` });
       if (!silent) toast(reason, bad ? 'error' : 'success');
     }

@@ -1,12 +1,13 @@
 <script setup>
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import {
-  DocumentTextOutline, PlayOutline, SendOutline, SparklesOutline, StopCircleOutline,
+  CopyOutline, PlayOutline, SendOutline, SparklesOutline, StopCircleOutline,
   SyncOutline, TrashOutline,
 } from '@vicons/ionicons5';
 import { NButton, NIcon, NInput } from 'naive-ui';
 import { useActiveStore } from '../stores/active.js';
 import { useAutomationStore } from '../stores/automation.js';
+import { toast } from '../utils/toast.js';
 import AutoTestModal from './AutoTestModal.vue';
 import IconBtn from './IconBtn.vue';
 
@@ -21,6 +22,25 @@ const jsonClass = () => ({
   ok: 'is-ok',
   bad: 'is-bad',
 }[store.jsonState.state]);
+
+/* 首次进入自动填充一次示例（仅在草稿为空时，避免覆盖已恢复的草稿） */
+onMounted(() => {
+  if (!store.draft.payload.trim()) store.loadSample();
+});
+
+async function copyPayload() {
+  const text = store.draft.payload || '';
+  if (!text.trim()) {
+    toast('内容为空，无可复制', 'warning');
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('已复制 JSON 内容');
+  } catch {
+    toast('复制失败：剪贴板不可用', 'error');
+  }
+}
 
 const pad = (n) => String(n).padStart(2, '0');
 function clock(ts) {
@@ -50,7 +70,7 @@ function clock(ts) {
           title="停止自动化发送"
           @click="auto.stop('已手动停止')"
         />
-        <IconBtn :icon="DocumentTextOutline" title="填充示例" @click="store.loadSample()" />
+        <IconBtn :icon="CopyOutline" title="复制当前内容" @click="copyPayload" />
         <IconBtn :icon="SparklesOutline" title="格式化 JSON" @click="store.formatPayload()" />
         <IconBtn :icon="TrashOutline" title="清空" @click="store.clearPayload()" />
       </div>
@@ -70,6 +90,7 @@ function clock(ts) {
       :value="store.draft.payload"
       placeholder='{"hello": "kafka"}'
       :autosize="false"
+      :resizable="false"
       @update:value="store.setPayload"
     />
 
@@ -77,6 +98,7 @@ function clock(ts) {
       <span class="json-state" :class="jsonClass()">{{ store.jsonState.message }}</span>
       <span class="byte-count">{{ store.payloadBytes }} B</span>
       <span class="draft-state" :class="`is-${store.draftState}`">{{ store.draftStateText || '　' }}</span>
+      <span class="send-shortcut">ctrl+enter</span>
       <n-button
         type="primary"
         size="small"
@@ -130,18 +152,25 @@ function clock(ts) {
 }
 .auto-chip.paused { background: rgba(255, 149, 0, 0.14); color: var(--kd-orange); }
 .key-input { font-variant-numeric: tabular-nums; }
-/* textarea 填满发送区剩余高度，随 40% 基准伸缩 */
+/* textarea 只吃发送区剩余高度；高度完全由上方 splitter 的 flex-basis 决定 */
 .payload-input {
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
+  overflow: hidden;
 }
+.payload-input :deep(.n-input),
 .payload-input :deep(.n-input__textarea-el),
 .payload-input :deep(textarea) {
   height: 100%;
+  min-height: 0;
+  max-height: 100%;
   resize: none;
+}
+.payload-input :deep(textarea) {
   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
   font-size: 12.5px;
   line-height: 1.55;
+  overflow-y: auto;
 }
 .send-foot { flex: 0 0 auto; }
 .send-foot {
@@ -156,6 +185,12 @@ function clock(ts) {
 .byte-count { opacity: 0.55; font-variant-numeric: tabular-nums; }
 .draft-state { flex: 1; text-align: right; opacity: 0.5; }
 .draft-state.is-error { color: var(--kd-orange); opacity: 1; }
+.send-shortcut{
+    font-size: 12px;
+    opacity: 0.6;
+    font-variant-numeric: tabular-nums;
+    font-family: var(--kd-mono);
+}
 .receipt {
   font-size: 12px;
   opacity: 0.6;

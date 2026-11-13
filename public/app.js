@@ -2443,7 +2443,9 @@ function stopAuto(reason = '', silent = false) {
     : '';
   renderAuto(true);
   if (wasRunning && reason) {
-    const bad = /失败|非法|超时|错误/.test(reason);
+    // 注意：完成文案含「失败 0 条」统计，不能仅凭 reason 里的「失败」二字判错；
+    // 以实际失败数为准（lastFailed 在 resetAutoCounters 前已捕获）。
+    const bad = /非法|超时|错误/.test(reason) || (lastFailed > 0 && /失败/.test(reason));
     enqueueLog({ level: bad ? 'error' : 'info', text: `自动化发送停止：${reason}`, ts: Date.now() });
     if (!silent) toast(reason, bad ? 'error' : 'success');
   }
