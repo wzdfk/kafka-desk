@@ -20,6 +20,7 @@ function check(name, ok, extra = '') {
 const SRC_FILES = [
   'src/main.js', 'src/App.vue', 'src/styles/base.css', 'src/theme/index.js', 'src/theme/overrides.js',
   'src/api/api.js', 'src/api/sse.js', 'src/utils/storage.js', 'src/utils/toast.js', 'src/utils/dialog.js',
+  'src/utils/releases.js',
   'src/stores/servers.js', 'src/stores/prefs.js', 'src/stores/syslog.js', 'src/stores/active.js',
   'src/stores/messages.js', 'src/stores/automation.js',
   'src/router/index.js', 'src/components/TopBar.vue', 'src/components/IconBtn.vue',
@@ -27,6 +28,7 @@ const SRC_FILES = [
   'src/components/AccordionSection.vue', 'src/components/ConfigPanel.vue', 'src/components/RunLogPanel.vue',
   'src/components/SendPanel.vue', 'src/components/ReceiveArea.vue', 'src/components/MessageCard.vue',
   'src/components/TopicFilterPanel.vue', 'src/components/Splitter.vue', 'src/components/AutoTestModal.vue',
+  'src/components/UpdateManager.vue',
   'src/views/ServerList.vue', 'src/views/Workspace.vue', 'src/views/Settings.vue',
 ];
 

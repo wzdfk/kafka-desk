@@ -9,6 +9,7 @@ import {
   LayersOutline, TerminalOutline, TrashOutline,
 } from '@vicons/ionicons5';
 import IconBtn from '../components/IconBtn.vue';
+import UpdateManager from '../components/UpdateManager.vue';
 import { usePrefsStore, PREF_CACHE_LIMIT, PREF_MAX_MESSAGES } from '../stores/prefs.js';
 import { useSyslogStore } from '../stores/syslog.js';
 import { useServersStore } from '../stores/servers.js';
@@ -18,7 +19,8 @@ import { confirmDialog } from '../utils/dialog.js';
 import { MODE_LABEL, setThemeMode, themeMode, themeResolved } from '../theme/index.js';
 
 /* 系统设置：外观主题 / 消息与缓存 / 系统日志 / 关于（legacy index.html:301-512）。 */
-const APP_VERSION = '1.0.0';
+/* 版本由 vite define 从根 package.json 注入（Q3），不再硬编码。 */
+const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.0.0';
 
 const router = useRouter();
 const prefs = usePrefsStore();
@@ -379,6 +381,8 @@ function back() {
               <h2>KafkaDesk <span class="about-ver">v{{ APP_VERSION }}</span></h2>
             </div>
           </div>
+
+          <UpdateManager :active="pane === 'about'" />
 
           <div class="card">
             <div class="card-head">

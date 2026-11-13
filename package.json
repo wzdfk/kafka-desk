@@ -14,7 +14,9 @@
     "predist:dir": "npm --prefix web run build",
     "verify": "node tools/verify-electron.js",
     "verify:web": "node tools/verify-web.js",
-    "verify:integration": "node tools/verify-integration.js"
+    "verify:integration": "node tools/verify-integration.js",
+    "verify:update": "node tools/verify-update.js",
+    "release": "node tools/release.mjs"
   },
   "dependencies": {
     "express": "^4.21.2",

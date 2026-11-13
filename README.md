@@ -40,6 +40,34 @@ npm run build  # 产出 web/dist
 | `npm run verify` | Electron 集成：动态端口启动、打包必备文件、主进程安全配置 |
 | `npm run verify:web` | Vue3 工程：源文件齐全、vite 构建、单测、代理配置 |
 | `npm run verify:integration` | 静态切换：web/dist 生效 / 默认旧版 / 目录缺失回退 三场景真实启动验证 |
+| `npm run verify:update` | 版本更新离线自检：四处版本一致、注入链路、IPC 契约、URL 白名单、SHA256、降级判定、runner 临时目录「替换 + 回滚」沙盒演练（不碰真实 exe） |
+| `npm run release -- baseline --dry-run` | 发版脚本预演（不写文件、不推送） |
+
+## 版本与更新
+
+- **事实源**：GitHub Releases（`wzdfk/kafka-desk`），版本号唯一来源是根 `package.json`（构建时注入 `web/dist`）。
+- **检查更新**：设置 → 关于 →「版本与更新」。进入该分区自动检查（成功缓存 24h / 失败 30min / 手动 60s 节流）；限流或离线时显示上次缓存并给出「打开 Releases 页」入口。
+- **覆盖范围**：仅 **Electron 打包版**支持一键更新（应用内下载 → 进度条 → SHA256 校验 → 退出并由 runner 替换 exe → 重启）；Vue3 网页端只显示检查与版本历史；旧版 `public/` 无入口。
+- **降级**：`PORTABLE_EXECUTABLE_FILE` 缺失 / 目录只读 / 校验失败时，退回到「已下载，请完全退出程序后手动替换」。更新前请关闭所有 KafkaDesk 实例（有单实例锁）。
+
+发版（需已 `gh auth login`）：
+
+```bash
+npm run release -- baseline          # 首个基线 Release：生成 exe 的 .sha256 资产
+npm run release -- patch             # bump 版本并重建产物，打印后续命令
+npm run release -- patch --publish   # 自动 commit / tag / push / gh release create
+```
+
+`.sha256` 资产必须与 exe 一起上传，否则客户端会拒绝替换。
+
+### 人工验证清单（不可离线自动化）
+
+| # | 动作 |
+|---|---|
+| 1 | 运行打包 exe，确认 `%APPDATA%/kafka-desk/portable-probe.json` 的 `target` 是外层 exe、`execPath` 是临时副本 |
+| 2 | 联网打开设置 → 关于，确认检查更新、版本历史、限流降级文案 |
+| 3 | 用测试 tag 做一次真实一键更新，观察进度条 → 校验 → 退出重启 |
+| 4 | 验证 SmartScreen 提示 / 只读目录 / 断网 三个降级场景 |
 
 ## 数据与缓存
 

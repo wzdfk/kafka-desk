@@ -441,6 +441,7 @@ app.get('/api/status', (req, res) => res.json({
   ok: true,
   demo: DEMO,
   servers: registry.length,
+  version: require('./package.json').version,
 }));
 
 app.get('/api/stream', (req, res) => {

@@ -91,6 +91,12 @@ async function main() {
   check('contextIsolation 开启', /contextIsolation:\s*true/.test(mainSrc));
   check('数据目录指向 userData', mainSrc.includes("app.getPath('userData')"));
   check('单实例锁已启用', mainSrc.includes('requestSingleInstanceLock'));
+  check('更新桥接：preload.js 存在且被挂载',
+    fs.existsSync(path.join(ROOT, 'electron/preload.js'))
+    && mainSrc.includes("preload: path.join(__dirname, 'preload.js')"));
+  check('更新逻辑：electron/update.js 存在且被引用',
+    fs.existsSync(path.join(ROOT, 'electron/update.js'))
+    && mainSrc.includes("require('./update')"));
 
   const failed = results.filter((r) => !r.ok);
   console.log(`\n${results.length - failed.length}/${results.length} passed`);

@@ -5,6 +5,7 @@ export const storageKeys = {
   theme: 'kafka-desk-theme',
   prefs: 'kafka-desk-prefs',
   syslog: 'kafka-desk-syslog',
+  updateCheck: 'kafka-desk-update-check',
   openTabs: 'kafka-desk-open-tabs',
   cfgSections: 'kafka-desk-cfg-sections',
   splitter: 'kafka-desk-splitter',
