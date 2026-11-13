@@ -9,6 +9,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import crypto from 'node:crypto';
 import { execFileSync, execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -29,6 +30,23 @@ const run = (cmd) => {
   if (dryRun) return '';
   return execSync(cmd, { cwd: ROOT, encoding: 'utf8', stdio: 'inherit' });
 };
+
+/* gh 可能不在当前 shell 的 PATH（Windows 安装到 Program Files）。 */
+function ghBin() {
+  const candidates = [
+    process.env.GH_PATH,
+    'gh',
+    'C:\\Program Files\\GitHub CLI\\gh.exe',
+    path.join(process.env.LOCALAPPDATA || process.env.HOME || os.homedir(), 'Programs', 'GitHub CLI', 'gh.exe'),
+  ].filter(Boolean);
+  for (const c of candidates) {
+    try {
+      execFileSync(c, ['--version'], { stdio: 'ignore' });
+      return c;
+    } catch { /* try next */ }
+  }
+  return 'gh';
+}
 
 function bump(v, kind) {
   const [a, b, c] = v.split('.').map(Number);
@@ -88,7 +106,7 @@ function main() {
     `git commit -m "release: ${tag}"`,
     `git tag ${tag}`,
     `git push && git push origin ${tag}`,
-    `gh release create ${tag} kafka_app/KafkaDesk-${version}-portable.exe kafka_app/KafkaDesk-${version}-portable.exe.sha256 --generate-notes --title "${tag}"`,
+    `"${ghBin()}" release create ${tag} kafka_app/KafkaDesk-${version}-portable.exe kafka_app/KafkaDesk-${version}-portable.exe.sha256 --generate-notes --title "${tag}"`,
   ];
 
   if (publish && !dryRun) {
