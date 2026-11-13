@@ -2272,7 +2272,7 @@ async function startAuto(mode) {
   autoClearError();
   if (!state.serverId) { autoError('请先进入一台服务器'); return; }
   if (!el.payload.value.trim() || !validJson(el.payload.value)) {
-    autoError('发送区 JSON 不合法或为空，请先修正后再启动'); return;
+    autoError('发送消息JSON 不合法或为空，请先修正后再启动'); return;
   }
   if (el.autoRandomId.checked && !firstBodyField(el.payload.value)) {
     autoError('已勾选「使用随机 request_id」，但内容体不是非空 JSON 对象，无法定位第一个字段；请取消勾选或修改内容'); return;
@@ -2351,7 +2351,7 @@ async function autoTick() {
   if (!id) { stopAuto('已离开工作区，自动化发送已停止', true); return; }
   const rawPayload = el.payload.value;
   if (!rawPayload.trim() || !validJson(rawPayload)) {
-    stopAuto('发送区 JSON 变为非法或为空，已自动停止'); return;
+    stopAuto('发送消息JSON 变为非法或为空，已自动停止'); return;
   }
   // Generate a fresh id immediately before each delivery. Only the payload
   // sent to Kafka is rebuilt; the editor / cached draft stay untouched.
@@ -2443,7 +2443,9 @@ function stopAuto(reason = '', silent = false) {
     : '';
   renderAuto(true);
   if (wasRunning && reason) {
-    const bad = /失败|非法|超时|错误/.test(reason);
+    // 注意：完成文案含「失败 0 条」统计，不能仅凭 reason 里的「失败」二字判错；
+    // 以实际失败数为准（lastFailed 在 resetAutoCounters 前已捕获）。
+    const bad = /非法|超时|错误/.test(reason) || (lastFailed > 0 && /失败/.test(reason));
     enqueueLog({ level: bad ? 'error' : 'info', text: `自动化发送停止：${reason}`, ts: Date.now() });
     if (!silent) toast(reason, bad ? 'error' : 'success');
   }

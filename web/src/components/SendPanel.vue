@@ -1,0 +1,200 @@
+<script setup>
+import { onMounted, ref } from 'vue';
+import {
+  CopyOutline, PlayOutline, SendOutline, SparklesOutline, StopCircleOutline,
+  SyncOutline, TrashOutline,
+} from '@vicons/ionicons5';
+import { NButton, NIcon, NInput } from 'naive-ui';
+import { useActiveStore } from '../stores/active.js';
+import { useAutomationStore } from '../stores/automation.js';
+import { toast } from '../utils/toast.js';
+import AutoTestModal from './AutoTestModal.vue';
+import IconBtn from './IconBtn.vue';
+
+/* Send editor: JSON validation footer, byte count, draft autosave (300ms),
+ * sample / format / clear, receipt of the last delivery, automation trigger. */
+const store = useActiveStore();
+const auto = useAutomationStore();
+const autoShow = ref(false);
+
+const jsonClass = () => ({
+  empty: 'is-empty',
+  ok: 'is-ok',
+  bad: 'is-bad',
+}[store.jsonState.state]);
+
+/* 首次进入自动填充一次示例（仅在草稿为空时，避免覆盖已恢复的草稿） */
+onMounted(() => {
+  if (!store.draft.payload.trim()) store.loadSample();
+});
+
+async function copyPayload() {
+  const text = store.draft.payload || '';
+  if (!text.trim()) {
+    toast('内容为空，无可复制', 'warning');
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('已复制 JSON 内容');
+  } catch {
+    toast('复制失败：剪贴板不可用', 'error');
+  }
+}
+
+const pad = (n) => String(n).padStart(2, '0');
+function clock(ts) {
+  const d = new Date(ts);
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+</script>
+
+<template>
+  <section class="send-panel">
+    <div class="send-head">
+      <span class="send-title">发送区</span>
+      <span v-if="auto.running" class="auto-chip" :class="{ paused: auto.paused }" :title="auto.statusHint">
+        {{ auto.headline }}
+      </span>
+      <div class="send-tools">
+        <IconBtn
+          :icon="auto.running ? (auto.paused ? PlayOutline : SyncOutline) : PlayOutline"
+          :spin="auto.running && !auto.paused"
+          :type="auto.running ? 'success' : 'default'"
+          :title="auto.running ? (auto.paused ? '自动化发送已暂停（点此查看/继续）' : '自动化发送运行中（点此查看/暂停）') : '自动化发送设置'"
+          @click="autoShow = true"
+        />
+        <IconBtn
+          v-if="auto.running"
+          :icon="StopCircleOutline"
+          title="停止自动化发送"
+          @click="auto.stop('已手动停止')"
+        />
+        <IconBtn :icon="CopyOutline" title="复制当前内容" @click="copyPayload" />
+        <IconBtn :icon="SparklesOutline" title="格式化 JSON" @click="store.formatPayload()" />
+        <IconBtn :icon="TrashOutline" title="清空" @click="store.clearPayload()" />
+      </div>
+    </div>
+
+    <n-input
+      class="key-input"
+      :value="store.draft.key"
+      size="small"
+      placeholder="消息 Key（可选，相同 Key 落同一分区）"
+      @update:value="store.setKey"
+    />
+
+    <n-input
+      class="payload-input"
+      type="textarea"
+      :value="store.draft.payload"
+      placeholder='{"hello": "kafka"}'
+      :autosize="false"
+      :resizable="false"
+      @update:value="store.setPayload"
+    />
+
+    <div class="send-foot">
+      <span class="json-state" :class="jsonClass()">{{ store.jsonState.message }}</span>
+      <span class="byte-count">{{ store.payloadBytes }} B</span>
+      <span class="draft-state" :class="`is-${store.draftState}`">{{ store.draftStateText || '　' }}</span>
+      <span class="send-shortcut">ctrl+enter</span>
+      <n-button
+        type="primary"
+        size="small"
+        round
+        :disabled="!store.jsonState.state || store.jsonState.state !== 'ok'"
+        :loading="store.sendBusy"
+        title="发送到发送主题（Ctrl+Enter）"
+        @click="store.send()"
+      >
+        <template #icon>
+          <n-icon :component="SendOutline" />
+        </template>
+        发送
+      </n-button>
+    </div>
+
+    <div v-if="store.lastReceipt" class="receipt">
+      回执 {{ clock(store.lastReceipt.ts) }} → {{ store.lastReceipt.topic }}
+      · p{{ store.lastReceipt.partition }} @{{ store.lastReceipt.offset }}
+      · {{ store.lastReceipt.bytes }} B
+    </div>
+
+    <AutoTestModal v-model:show="autoShow" />
+  </section>
+</template>
+
+<style scoped>
+.send-panel {
+  background: var(--kd-card-bg);
+  border: 1px solid var(--kd-card-border);
+  border-radius: var(--kd-radius-card);
+  box-shadow: var(--kd-card-shadow);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  box-sizing: border-box;
+}
+.send-head { display: flex; align-items: center; gap: 10px; }
+.send-title { font-size: 13.5px; font-weight: 600; }
+.send-tools { display: flex; gap: 2px; margin-left: auto; }
+.auto-chip {
+  font-size: 11.5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(52, 199, 89, 0.14);
+  color: var(--kd-green);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.auto-chip.paused { background: rgba(255, 149, 0, 0.14); color: var(--kd-orange); }
+.key-input { font-variant-numeric: tabular-nums; }
+/* textarea 只吃发送区剩余高度；高度完全由上方 splitter 的 flex-basis 决定 */
+.payload-input {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.payload-input :deep(.n-input),
+.payload-input :deep(.n-input__textarea-el),
+.payload-input :deep(textarea) {
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  resize: none;
+}
+.payload-input :deep(textarea) {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+  overflow-y: auto;
+}
+.send-foot { flex: 0 0 auto; }
+.send-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.json-state.is-empty { opacity: 0.45; }
+.json-state.is-ok { color: var(--kd-green); }
+.json-state.is-bad { color: var(--kd-red); }
+.byte-count { opacity: 0.55; font-variant-numeric: tabular-nums; }
+.draft-state { flex: 1; text-align: right; opacity: 0.5; }
+.draft-state.is-error { color: var(--kd-orange); opacity: 1; }
+.send-shortcut{
+    font-size: 12px;
+    opacity: 0.6;
+    font-variant-numeric: tabular-nums;
+    font-family: var(--kd-mono);
+}
+.receipt {
+  font-size: 12px;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--kd-mono);
+}
+</style>

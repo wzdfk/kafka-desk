@@ -15,10 +15,14 @@ const crypto = require('crypto');
 const express = require('express');
 const { Kafka, logLevel } = require('kafkajs');
 
-const HOST = '127.0.0.1';
+const HOST = process.env.KAFKA_DESK_HOST || '127.0.0.1';
 const PORT = Number(process.env.KAFKA_DESK_PORT || 18761);
 const DEMO = process.env.KAFKA_DESK_DEMO === '1';
-const DATA_DIR = path.join(__dirname, 'data');
+// Electron runs from app.asar (read-only): the shell injects a writable dir.
+// Unset -> keep the historical <repo>/data location for `node server.js`.
+const DATA_DIR = process.env.KAFKA_DESK_DATA
+  ? path.resolve(process.env.KAFKA_DESK_DATA)
+  : path.join(__dirname, 'data');
 const SERVERS_FILE = path.join(DATA_DIR, 'servers.json');
 const MAX_BUFFER = 200;       // per-server in-memory history
 const FLUSH_MS = 50;          // SSE batching window
@@ -629,7 +633,18 @@ app.post('/api/servers/:id/unsubscribe', api(async (req, res) => {
  * Static files + error handling + boot
  * ------------------------------------------------------------------ */
 
-app.use(express.static(path.join(__dirname, 'public')));
+/* 静态前端选择（T9 集成切换）：
+ * - 默认 `public/`（旧版 UI）：start.bat 与 `node server.js` 行为不变；
+ * - Electron 主进程注入 KAFKA_DESK_STATIC=web/dist（Vue3 版）；
+ * - 指向的目录缺 index.html 时回退 public/，保证旧版路径永远可用。 */
+let STATIC_DIR = path.resolve(__dirname, process.env.KAFKA_DESK_STATIC || 'public');
+if (!fs.existsSync(path.join(STATIC_DIR, 'index.html'))) {
+  if (process.env.KAFKA_DESK_STATIC) {
+    console.warn(`[WARN] KAFKA_DESK_STATIC="${process.env.KAFKA_DESK_STATIC}" 缺少 index.html，回退到 public/（旧版界面）`);
+  }
+  STATIC_DIR = path.resolve(__dirname, 'public');
+}
+app.use(express.static(STATIC_DIR));
 
 app.use((err, req, res, next) => {
   const message = err && err.type === 'entity.parse.failed'
@@ -657,6 +672,31 @@ if (DEMO) {
   }, 6000);
 }
 
-app.listen(PORT, HOST, () => {
-  console.log(`KafkaDesk running at http://${HOST}:${PORT}${DEMO ? ' (DEMO mode)' : ''} | servers=${registry.length}`);
-});
+/**
+ * Boot the HTTP server. `port: 0` lets the OS pick a free port, which the
+ * Electron shell relies on so it never collides with a `start.bat` instance.
+ * @returns {Promise<{server: import('http').Server, port: number, url: string}>}
+ */
+function startServer(options = {}) {
+  const host = options.host || HOST;
+  const port = options.port === undefined ? PORT : Number(options.port);
+  return new Promise((resolve, reject) => {
+    const server = app.listen(port, host, () => {
+      const addr = server.address();
+      const actual = addr && typeof addr === 'object' ? addr.port : port;
+      const url = `http://${host}:${actual}`;
+      console.log(`KafkaDesk running at ${url}${DEMO ? ' (DEMO mode)' : ''} | servers=${registry.length}`);
+      resolve({ server, port: actual, url });
+    });
+    server.once('error', reject);
+  });
+}
+
+if (require.main === module) {
+  startServer().catch((err) => {
+    console.error(`[ERROR] 启动失败: ${err.message}`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { app, startServer };

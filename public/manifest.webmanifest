@@ -1,7 +1,7 @@
 {
   "name": "KafkaDesk",
   "short_name": "KafkaDesk",
-  "description": "个人用简易 Kafka 客户端",
+  "description": "个人Kafka 客户端",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

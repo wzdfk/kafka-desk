@@ -2,3 +2,7 @@ node_modules/
 *.log
 # 本地服务器注册表（含 Broker 地址，不入库）
 data/servers.json
+# Electron 打包产物
+kafka_app/
+release-out/
+dist/
