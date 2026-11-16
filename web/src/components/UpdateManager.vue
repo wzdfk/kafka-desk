@@ -7,7 +7,8 @@ import {
 } from '@vicons/ionicons5';
 import IconBtn from './IconBtn.vue';
 import {
-  RELEASES_PAGE, assertGithubUrl, checkForUpdates, desktopBridge, formatBytes, isDesktopApp,
+  RELEASES_PAGE, assertDownloadUrl, assertGithubUrl, checkForUpdates, desktopBridge,
+  formatBytes, formatEta, formatSpeed, installAction, isDesktopApp,
 } from '../utils/releases.js';
 
 /* 关于页「版本与更新」卡片（Q10）：检查更新 + 版本历史 + 桌面端一键更新。
@@ -18,11 +19,14 @@ const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.0
 const status = ref('idle');
 const releases = ref([]);
 const latest = ref(null);
+const target = ref(null); // 当前操作目标版本（升级或回退）
 const error = ref(null);
 const checkedAt = ref(0);
 const fromCache = ref(false);
 const progress = ref({ phase: '', received: 0, total: 0, percent: 0 });
+const speed = ref(0); // 字节/秒（EMA 平滑）
 const downloadedPath = ref('');
+let lastSample = { t: 0, bytes: 0 };
 let unsubProgress = null;
 let busy = false;
 
@@ -31,6 +35,24 @@ const canSelfUpdate = ref(true);
 const capabilityReason = ref('');
 const canUpdate = computed(() => desktop && canSelfUpdate.value
   && !!latest.value?.asset && status.value === 'available');
+const busyDownload = computed(() => ['downloading', 'verifying', 'restarting'].includes(status.value));
+
+/* 任意版本：桌面端 + 可自替换 + 有 exe 资产 + 不是当前版本。 */
+function canInstall(release) {
+  return desktop && canSelfUpdate.value && !busyDownload.value
+    && installAction(release) !== 'current' && installAction(release) !== 'unavailable';
+}
+
+function actionText(release) {
+  const a = installAction(release);
+  if (a === 'update') return '更新';
+  if (a === 'install') return '安装';
+  return '不可用';
+}
+
+function actionType(release) {
+  return installAction(release) === 'update' ? 'primary' : 'default';
+}
 
 const ERROR_TEXT = {
   offline: '当前离线，无法连接 GitHub',
@@ -48,9 +70,9 @@ const statusText = computed(() => ({
   available: `发现新版本 v${latest.value?.version || ''}`,
   empty: '暂无发布记录',
   error: ERROR_TEXT[error.value] || '暂时无法检查',
-  downloading: '正在下载更新…',
-  verifying: '正在校验安装包…',
-  restarting: '即将重启以完成更新',
+  downloading: `正在下载 v${target.value?.version || ''}…`,
+  verifying: `正在校验 v${target.value?.version || ''}…`,
+  restarting: `即将重启并${target.value?.relation === 'older' ? '安装' : '更新'}到 v${target.value?.version || ''}`,
   degraded: '已下载，请退出程序后手动替换',
   cancelled: '下载已取消',
 }[status.value]));
@@ -106,6 +128,13 @@ function openPage(url = RELEASES_PAGE) {
   window.open(url, '_blank', 'noopener,noreferrer');
 }
 
+/* 网页端没有 IPC，只能把安装包下载下来，替换仍需手动。 */
+function downloadOnly(release) {
+  if (typeof window === 'undefined' || !release?.asset) return;
+  if (!assertDownloadUrl(release.asset.url)) return;
+  window.open(release.asset.url, '_blank', 'noopener,noreferrer');
+}
+
 function releaseBadge(r) {
   if (r.relation === 'current') return { text: '当前版本', type: 'success' };
   if (r.relation === 'newer') return { text: '可更新', type: 'info' };
@@ -117,20 +146,56 @@ function releaseDate(r) {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('zh-CN');
 }
 
-async function startUpdate() {
+function resetSpeed() {
+  speed.value = 0;
+  lastSample = { t: 0, bytes: 0 };
+}
+
+/* 两次进度事件的时间差估算瞬时速度，EMA 平滑避免数字乱跳。 */
+function sampleSpeed(p) {
+  const now = Date.now();
+  if (!lastSample.t) { lastSample = { t: now, bytes: p.received }; return; }
+  const dt = (now - lastSample.t) / 1000;
+  if (dt < 0.3) return;
+  const delta = p.received - lastSample.bytes;
+  if (delta >= 0) {
+    const inst = delta / dt;
+    speed.value = speed.value > 0 ? speed.value * 0.7 + inst * 0.3 : inst;
+  }
+  lastSample = { t: now, bytes: p.received };
+}
+
+const progressText = computed(() => {
+  const p = progress.value;
+  if (status.value === 'verifying') return '校验中…';
+  const parts = [`${formatBytes(p.received)} / ${formatBytes(p.total)}`, `${p.percent}%`];
+  const s = formatSpeed(speed.value);
+  if (s) parts.push(s);
+  const remain = p.total > p.received && speed.value > 0
+    ? (p.total - p.received) / speed.value : 0;
+  const eta = formatEta(remain);
+  if (eta) parts.push(`剩余 ${eta}`);
+  return parts.join(' · ');
+});
+
+async function startUpdate(release = latest.value) {
   const bridge = desktopBridge();
-  if (!bridge || !latest.value?.asset) return;
+  if (!bridge || !release?.asset || !canInstall(release)) return;
+  target.value = release;
+  error.value = null;
+  resetSpeed();
   status.value = 'downloading';
-  progress.value = { phase: 'downloading', received: 0, total: latest.value.asset.size || 0, percent: 0 };
+  progress.value = { phase: 'downloading', received: 0, total: release.asset.size || 0, percent: 0 };
   unsubProgress = bridge.onProgress((p) => {
     progress.value = p;
+    if (p.phase === 'downloading') sampleSpeed(p);
     if (p.phase === 'verifying' && status.value === 'downloading') status.value = 'verifying';
   });
   try {
     const r = await bridge.download({
-      url: latest.value.asset.url,
-      version: latest.value.version,
-      sha256Url: latest.value.sha256Url,
+      url: release.asset.url,
+      version: release.version,
+      sha256Url: release.sha256Url,
     });
     if (!r || r.cancelled) { status.value = 'cancelled'; return; }
     if (!r.ok) {
@@ -147,12 +212,13 @@ async function startUpdate() {
     }
     downloadedPath.value = r.file || '';
     status.value = 'restarting';
-    await bridge.apply({ file: r.file, version: latest.value.version });
+    await bridge.apply({ file: r.file, version: release.version });
   } catch (e) {
     status.value = 'error';
     error.value = e?.message || 'apply-failed';
   } finally {
     if (unsubProgress) { unsubProgress(); unsubProgress = null; }
+    resetSpeed();
   }
 }
 
@@ -178,7 +244,7 @@ onBeforeUnmount(() => { if (unsubProgress) unsubProgress(); });
       />
       <span class="um-status-text">{{ statusText }}</span>
       <span class="um-actions">
-        <n-popover trigger="click" placement="bottom-end" :width="440" scrollable>
+        <n-popover trigger="click" placement="bottom-end" :width="520" scrollable>
           <template #trigger>
             <n-button size="small" secondary :disabled="!releases.length">
               版本历史
@@ -196,7 +262,28 @@ onBeforeUnmount(() => { if (unsubProgress) unsubProgress(); });
                 <span class="um-hist-date">{{ releaseDate(r) }}</span>
               </div>
               <div class="um-hist-notes">{{ r.notes || '无更新说明' }}</div>
-              <IconBtn :icon="OpenOutline" size="tiny" :icon-size="14" :title="`打开 v${r.version} 发布页`" @click="openPage(r.htmlUrl)" />
+              <span class="um-hist-actions">
+                <n-button
+                  v-if="desktop && installAction(r) !== 'current'"
+                  size="tiny"
+                  :type="actionType(r)"
+                  :disabled="!canInstall(r)"
+                  :title="installAction(r) === 'install' ? '安装该版本（会重启；之后仍会提示升级）' : '更新到该版本'"
+                  @click="startUpdate(r)"
+                >
+                  {{ actionText(r) }}
+                </n-button>
+                <n-button
+                  v-else-if="!desktop && installAction(r) !== 'current'"
+                  size="tiny"
+                  :disabled="!r.asset"
+                  title="网页端只能下载安装包，自动替换请用桌面版"
+                  @click="downloadOnly(r)"
+                >
+                  下载
+                </n-button>
+                <IconBtn :icon="OpenOutline" size="tiny" :icon-size="14" :title="`打开 v${r.version} 发布页`" @click="openPage(r.htmlUrl)" />
+              </span>
             </div>
           </div>
         </n-popover>
@@ -204,7 +291,7 @@ onBeforeUnmount(() => { if (unsubProgress) unsubProgress(); });
       </span>
     </div>
 
-    <div v-if="latest && (status === 'available' || status === 'downloading')" class="um-latest">
+    <div v-if="latest && status === 'available'" class="um-latest">
       <div class="um-latest-info">
         <b>v{{ latest.version }}</b>
         <span>{{ latest.publishedAt ? releaseDate(latest) : '' }} · {{ formatBytes(latest.asset?.size || 0) }}</span>
@@ -223,7 +310,7 @@ onBeforeUnmount(() => { if (unsubProgress) unsubProgress(); });
     <div v-if="['downloading', 'verifying'].includes(status)" class="um-progress">
       <n-progress type="line" :percentage="progress.percent" :height="8" :show-indicator="false" />
       <div class="um-progress-meta">
-        <span>{{ status === 'verifying' ? '校验中…' : `${formatBytes(progress.received)} / ${formatBytes(progress.total)} · ${progress.percent}%` }}</span>
+        <span>{{ progressText }}</span>
         <n-button v-if="status === 'downloading'" text size="tiny" @click="cancelDownload">取消</n-button>
       </div>
     </div>
@@ -293,11 +380,20 @@ onBeforeUnmount(() => { if (unsubProgress) unsubProgress(); });
 .um-hist-empty { font-size: 12px; opacity: 0.6; padding: 12px 4px; text-align: center; }
 .um-hist-row {
   position: relative;
-  padding: 7px 34px 7px 9px;
+  padding: 7px 118px 7px 9px;
   border-radius: 8px;
   background: var(--kd-surface);
 }
-.um-hist-row :deep(.n-button) { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); }
+.um-hist-actions {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.um-hist-actions :deep(.n-button) { position: static; transform: none; }
 .um-hist-main { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
 .um-hist-date { opacity: 0.5; font-size: 11.5px; }
 .um-hist-notes { font-size: 11.5px; opacity: 0.65; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -46,6 +46,9 @@ function main() {
   check('Settings.vue 不再硬编码版本', !/APP_VERSION\s*=\s*'1\.0\.0'/.test(read('web/src/views/Settings.vue')));
   check('UpdateManager 使用注入版本', read('web/src/components/UpdateManager.vue').includes('__APP_VERSION__'));
   check('/api/status 返回 version', /servers: registry\.length,\s*version:/.test(read('server.js')));
+  check('版本列表走本地 Atom 代理', read('server.js').includes("'/api/app/releases'")
+    && fs.existsSync(path.join(ROOT, 'lib/releases-atom.js')));
+  check('前端优先本地代理再回退 GitHub API', read('web/src/utils/releases.js').includes('LOCAL_RELEASES_API'));
 
   const pkg = json('package.json');
   check('release 脚本已注册', pkg.scripts.release === 'node tools/release.mjs');

@@ -30,6 +30,7 @@
     },
     "files": [
       "electron/**/*",
+      "lib/**/*",
       "public/**/*",
       "web/dist/**/*",
       "server.js",

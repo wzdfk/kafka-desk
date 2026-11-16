@@ -1,9 +1,11 @@
 /* KafkaDesk 发版脚本（Q4=A / Q3 版本镜像修正 / Q8 .sha256 资产）。
  *
- *   npm run release -- baseline            # 首个基线 Release（不 bump 版本）
- *   npm run release -- patch|minor|major   # bump + 构建 + 产物 + 输出发布命令
- *   npm run release -- patch --publish     # 额外自动 commit/tag/push + gh release create
- *   npm run release -- patch --dry-run     # 只做一致性检查并打印计划，不写文件
+ *   npm run release -- baseline                    # 首个基线 Release（不 bump 版本）
+ *   npm run release -- patch|minor|major           # bump + 构建 + 产物 + 输出发布命令
+ *   npm run release -- --version 1.2.3             # 手动指定精确版本（必须大于当前版本）
+ *   npm run release -- 1.2.3                       # 同上，位置参数写法
+ *   npm run release -- patch --publish             # 额外自动 commit/tag/push + gh release create
+ *   npm run release -- 1.2.3 --dry-run             # 只做一致性检查并打印计划，不写文件
  *
  * 根 package.json 是唯一版本事实源；web/package.json 与两个 lock 是派生镜像。
  */
@@ -16,9 +18,21 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
-const mode = args.find((a) => ['baseline', 'patch', 'minor', 'major'].includes(a)) || 'baseline';
 const publish = args.includes('--publish');
 const dryRun = args.includes('--dry-run');
+
+const VERSION_RE = /^\d+\.\d+\.\d+$/;
+/* 精确版本：--version X.Y.Z 或裸位置参数 X.Y.Z（允许 v 前缀）。 */
+const explicitVersion = (() => {
+  const eq = args.find((a) => String(a).startsWith('--version='));
+  const i = args.indexOf('--version');
+  const raw = eq ? eq.split('=')[1]
+    : (i >= 0 ? args[i + 1] : args.find((a) => VERSION_RE.test(String(a).replace(/^v/, ''))));
+  if (!raw) return '';
+  return String(raw).replace(/^v/, '').trim();
+})();
+const mode = explicitVersion ? 'explicit'
+  : (args.find((a) => ['baseline', 'patch', 'minor', 'major'].includes(a)) || 'baseline');
 
 const readJson = (f) => JSON.parse(fs.readFileSync(path.join(ROOT, f), 'utf8'));
 const writeJson = (f, obj) => {
@@ -68,17 +82,43 @@ function assertConsistent() {
   return root.version;
 }
 
+function cmp(a, b) {
+  const x = a.split('.').map(Number);
+  const y = b.split('.').map(Number);
+  for (let i = 0; i < 3; i += 1) {
+    if (x[i] !== y[i]) return x[i] > y[i] ? 1 : -1;
+  }
+  return 0;
+}
+
 function main() {
   const current = assertConsistent();
-  const version = mode === 'baseline' ? current : bump(current, mode);
+  if (mode === 'explicit' && !VERSION_RE.test(explicitVersion)) {
+    throw new Error(`版本号必须形如 X.Y.Z：${explicitVersion}`);
+  }
+  const version = mode === 'explicit' ? explicitVersion
+    : (mode === 'baseline' ? current : bump(current, mode));
   const tag = `v${version}`;
   const exe = path.join(ROOT, 'kafka_app', `KafkaDesk-${version}-portable.exe`);
   const sumFile = `${exe}.sha256`;
 
+  if (mode === 'explicit') {
+    if (cmp(version, current) <= 0) {
+      throw new Error(`指定版本必须大于当前版本 ${current}（客户端只认更高版本才提示更新）`);
+    }
+    const exists = (() => {
+      try {
+        execFileSync('git', ['rev-parse', '-q', '--verify', `refs/tags/${tag}`], { cwd: ROOT, stdio: 'ignore' });
+        return true;
+      } catch { return false; }
+    })();
+    if (exists) throw new Error(`tag ${tag} 已存在，请换一个版本号`);
+  }
+
   console.log(`版本一致性 OK：${current} → ${version}（${mode}）`);
   console.log(`产物：${path.relative(ROOT, exe)}`);
 
-  if (mode !== 'baseline' && !dryRun) {
+  if (version !== current && !dryRun) {
     const root = readJson('package.json');
     const web = readJson('web/package.json');
     const lock = readJson('package-lock.json');
@@ -91,7 +131,7 @@ function main() {
     writeJson('web/package-lock.json', webLock);
   }
 
-  if (!fs.existsSync(exe) || mode !== 'baseline') {
+  if (!fs.existsSync(exe) || version !== current) {
     run('npm run dist'); // predist 自动构建 web/dist
   }
   if (!dryRun) {

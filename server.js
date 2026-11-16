@@ -14,6 +14,7 @@ const path = require('path');
 const crypto = require('crypto');
 const express = require('express');
 const { Kafka, logLevel } = require('kafkajs');
+const { ATOM_URL, parseReleasesAtom } = require('./lib/releases-atom');
 
 const HOST = process.env.KAFKA_DESK_HOST || '127.0.0.1';
 const PORT = Number(process.env.KAFKA_DESK_PORT || 18761);
@@ -442,6 +443,35 @@ app.get('/api/status', (req, res) => res.json({
   demo: DEMO,
   servers: registry.length,
   version: require('./package.json').version,
+}));
+
+/* 版本列表代理：GitHub 的 Releases Atom feed 无 REST API 的 60/h 未认证配额，
+ * 且不允许浏览器跨域，所以由本地后端代取 + 缓存，前端只与本机通信。
+ * 数据仍是 GitHub Releases（唯一事实源），只是换了免限流的端点。 */
+let releasesCache = { at: 0, data: null };
+app.get('/api/app/releases', api(async (req, res) => {
+  const force = req.query && req.query.force === '1';
+  if (!force && releasesCache.data && Date.now() - releasesCache.at < 10 * 60 * 1000) {
+    return res.json({ releases: releasesCache.data, cached: true });
+  }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const upstream = await fetch(ATOM_URL, {
+      headers: { 'User-Agent': 'KafkaDesk', Accept: 'application/atom+xml' },
+      signal: ctrl.signal,
+    });
+    if (!upstream.ok) throw new ClientError(`获取版本列表失败 (${upstream.status})`);
+    const releases = parseReleasesAtom(await upstream.text());
+    if (!releases.length) throw new ClientError('版本列表为空或解析失败');
+    releasesCache = { at: Date.now(), data: releases };
+    return res.json({ releases, cached: false });
+  } catch (err) {
+    if (err && err.name === 'AbortError') throw new ClientError('获取版本列表超时');
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }));
 
 app.get('/api/stream', (req, res) => {

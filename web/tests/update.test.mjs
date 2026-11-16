@@ -1,10 +1,15 @@
 /* 版本检查纯逻辑离线单测（Q11 L1）。无 DOM / 无网络。 */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 import {
   REPO, assertDownloadUrl, assertGithubUrl, checkForUpdates, classifyError,
-  compareSemver, formatBytes, normalizeReleases, parseTag, selectLatest, shouldCheck,
+  compareSemver, formatBytes, formatEta, formatSpeed, installAction, normalizeReleases, parseTag,
+  selectLatest, shouldCheck,
 } from '../src/utils/releases.js';
+
+const require = createRequire(import.meta.url);
+const { parseReleasesAtom } = require('../../lib/releases-atom.js');
 
 class LSShim {
   constructor() { this.m = new Map(); }
@@ -93,6 +98,27 @@ test('selectLatest：取最大 semver，不取 API 第一条', () => {
   assert.equal(selectLatest([], '1.0.0').status, 'empty');
 });
 
+test('网速与剩余时间格式化', () => {
+  assert.equal(formatSpeed(3.2 * 1024 * 1024), '3.2 MB/s');
+  assert.equal(formatSpeed(2048), '2.0 KB/s');
+  assert.equal(formatSpeed(0), '', '未知速度不显示 0 B/s');
+  assert.equal(formatSpeed(NaN), '');
+  assert.equal(formatEta(42), '42s');
+  assert.equal(formatEta(95), '1m 35s');
+  assert.equal(formatEta(3720), '1h 2m');
+  assert.equal(formatEta(0), '');
+});
+
+test('installAction：新版本=更新 / 旧版本=安装 / 当前=不可动 / 无资产=不可用', () => {
+  const list = normalizeReleases([release('v1.0.2'), release('v1.0.1'), release('v1.0.0')], '1.0.1');
+  const [newer, current, older] = list;
+  assert.equal(installAction(newer), 'update');
+  assert.equal(installAction(current), 'current');
+  assert.equal(installAction(older), 'install');
+  assert.equal(installAction({ ...older, asset: null }), 'unavailable');
+  assert.equal(installAction(null), 'unavailable');
+});
+
 test('外链白名单：仅本仓库 HTTPS 下载直链', () => {
   assert.equal(assertDownloadUrl(EXE), true);
   assert.equal(assertGithubUrl(`https://github.com/${REPO}/releases`), true);
@@ -119,6 +145,7 @@ test('shouldCheck：成功 24h / 失败 30min / 手动 60s 节流', () => {
   assert.equal(shouldCheck(fail, now + 30 * 60 * 1000), true);
   assert.equal(shouldCheck(ok, now, true), false);
   assert.equal(shouldCheck(ok, now + 60 * 1000, true), true);
+  assert.equal(shouldCheck(fail, now, true), true, '失败后手动重试不受 60s 限制');
   assert.equal(shouldCheck({ ok: true, checkedAt: now + 9999 }, now), true);
 });
 
@@ -174,4 +201,45 @@ test('formatBytes', () => {
   assert.equal(formatBytes(512), '512 B');
   assert.equal(formatBytes(2048), '2.0 KB');
   assert.equal(formatBytes(5 * 1024 * 1024), '5.0 MB');
+});
+
+test('Atom feed 解析：tag / 时间 / 页面 / 推导出的 exe 与 sha256 资产', () => {
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry>
+    <id>tag:github.com,2008:Repository/999/v1.0.2</id>
+    <updated>2026-11-13T08:00:00Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/wzdfk/kafka-desk/releases/tag/v1.0.2"/>
+    <title>v1.0.2</title>
+    <content type="html">&lt;p&gt;Fix &amp; polish&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>tag:github.com,2008:Repository/999/not-a-version</id>
+    <link rel="alternate" href="https://github.com/wzdfk/kafka-desk/releases/tag/nightly"/>
+    <title>nightly</title>
+  </entry>
+</feed>`;
+  const list = parseReleasesAtom(xml);
+  assert.equal(list.length, 1, '非 vX.Y.Z 的 entry 被丢弃');
+  const r = list[0];
+  assert.equal(r.tag_name, 'v1.0.2');
+  assert.equal(r.published_at, '2026-11-13T08:00:00Z');
+  assert.equal(r.html_url, `https://github.com/${REPO}/releases/tag/v1.0.2`);
+  assert.equal(r.body, 'Fix & polish');
+  assert.equal(r.assets[0].browser_download_url,
+    `https://github.com/${REPO}/releases/download/v1.0.2/KafkaDesk-1.0.2-portable.exe`);
+  assert.equal(r.assets[1].name, 'KafkaDesk-1.0.2-portable.exe.sha256');
+  assert.equal(assertDownloadUrl(r.assets[0].browser_download_url), true);
+});
+
+test('Atom 解析后可直接走 normalizeReleases / selectLatest', () => {
+  const xml = `<feed><entry>
+    <id>tag:github.com,2008:Repository/1/v1.3.0</id>
+    <updated>2026-11-14T00:00:00Z</updated>
+    <link rel="alternate" href="https://github.com/wzdfk/kafka-desk/releases/tag/v1.3.0"/>
+    <title>v1.3.0</title><content>notes</content>
+  </entry></feed>`;
+  const list = normalizeReleases(parseReleasesAtom(xml), '1.0.0');
+  assert.equal(list[0].version, '1.3.0');
+  assert.equal(selectLatest(list, '1.0.0').status, 'available');
 });
