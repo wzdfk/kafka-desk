@@ -2,6 +2,7 @@
 import { NConfigProvider, NGlobalStyle, dateZhCN, zhCN } from 'naive-ui';
 import { naiveTheme, themeOverrides } from './theme';
 import TopBar from './components/TopBar.vue';
+import UpdateBanner from './components/UpdateBanner.vue';
 </script>
 
 <template>
@@ -14,6 +15,7 @@ import TopBar from './components/TopBar.vue';
     <n-global-style />
     <div class="app-shell">
       <TopBar />
+      <UpdateBanner />
       <main class="app-main">
         <router-view v-slot="{ Component }">
           <transition name="kd-fade" mode="out-in">

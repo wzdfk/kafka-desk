@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import {
   NCheckbox, NIcon, NInput, NSelect,
 } from 'naive-ui';
@@ -23,6 +23,7 @@ import { MODE_LABEL, setThemeMode, themeMode, themeResolved } from '../theme/ind
 const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.0.0';
 
 const router = useRouter();
+const route = useRoute();
 const prefs = usePrefsStore();
 const syslog = useSyslogStore();
 const servers = useServersStore();
@@ -182,6 +183,16 @@ const serverCount = computed(() => `${servers.list.length} 台`);
 onMounted(() => {
   usage.value = storageUsage();
 });
+
+/* 更新横幅跳转到 ?pane=about；已在设置页时也能直接切到「关于」。 */
+watch(
+  () => route.query.pane,
+  (p) => {
+    const key = String(p || '');
+    if (PANES.some((item) => item.key === key)) switchPane(key);
+  },
+  { immediate: true },
+);
 
 function back() {
   if (window.history.length > 1) router.back();

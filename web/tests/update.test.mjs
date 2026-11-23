@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import {
   REPO, assertDownloadUrl, assertGithubUrl, checkForUpdates, classifyError,
-  compareSemver, formatBytes, formatEta, formatSpeed, installAction, normalizeReleases, parseTag,
-  selectLatest, shouldCheck,
+  compareSemver, formatBytes, formatEta, formatSpeed, installAction, isUpdateAvailable,
+  normalizeReleases, parseTag, selectLatest, shouldCheck,
 } from '../src/utils/releases.js';
 
 const require = createRequire(import.meta.url);
@@ -96,6 +96,19 @@ test('selectLatest：取最大 semver，不取 API 第一条', () => {
   assert.equal(selectLatest(list, '1.0.0').status, 'available');
   assert.equal(selectLatest(list, '1.0.3').status, 'up-to-date');
   assert.equal(selectLatest([], '1.0.0').status, 'empty');
+});
+
+test('isUpdateAvailable：仅检查成功且发现更新时提示', () => {
+  assert.equal(isUpdateAvailable({
+    ok: true, status: 'available', latest: { version: '1.0.2' },
+  }), true);
+  assert.equal(isUpdateAvailable({
+    ok: true, status: 'up-to-date', latest: { version: '1.0.1' },
+  }), false);
+  assert.equal(isUpdateAvailable({
+    ok: false, status: 'available', latest: { version: '1.0.2' },
+  }), false, '失败时沿用旧缓存，不应弹更新横幅');
+  assert.equal(isUpdateAvailable(null), false);
 });
 
 test('网速与剩余时间格式化', () => {

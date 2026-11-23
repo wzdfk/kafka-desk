@@ -111,6 +111,11 @@ export function selectLatest(releases, currentVersion) {
   return { status, latest };
 }
 
+/* 启动横幅只在「检查成功 + 明确有更新 + 有目标版本」时出现。 */
+export function isUpdateAvailable(result) {
+  return !!result && result.ok === true && result.status === 'available' && !!result.latest;
+}
+
 /* 任意版本的可执行动作：current=已装 / update=升级 / install=回退安装 / unavailable=缺资产。
  * 回退是 Q5 的修订：允许装回旧版本，避免新版有 bug 时无路可走。 */
 export function installAction(release) {
