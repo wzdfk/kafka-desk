@@ -3,9 +3,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import {
-  REPO, assertDownloadUrl, assertGithubUrl, checkForUpdates, classifyError,
-  compareSemver, formatBytes, formatEta, formatSpeed, installAction, isUpdateAvailable,
-  normalizeReleases, parseTag, selectLatest, shouldCheck,
+  LOCAL_RELEASES_API, REPO, assertDownloadUrl, assertGithubUrl, checkForUpdates, classifyError,
+  compareSemver, formatBytes, formatEta, formatSpeed, installAction, isNetworkAvailable,
+  isUpdateAvailable, normalizeReleases, parseTag, selectLatest, shouldCheck,
 } from '../src/utils/releases.js';
 
 const require = createRequire(import.meta.url);
@@ -162,6 +162,12 @@ test('shouldCheck：成功 24h / 失败 30min / 手动 60s 节流', () => {
   assert.equal(shouldCheck({ ok: true, checkedAt: now + 9999 }, now), true);
 });
 
+test('isNetworkAvailable：明确离线时跳过，其他情况允许检查', () => {
+  assert.equal(isNetworkAvailable(false), false);
+  assert.equal(isNetworkAvailable(true), true);
+  assert.equal(isNetworkAvailable(), true, '无 navigator 时默认尝试联网');
+});
+
 test('checkForUpdates：成功写入缓存，24h 内复用，强制刷新 60s 生效', async () => {
   const ls = new LSShim();
   let calls = 0;
@@ -184,6 +190,24 @@ test('checkForUpdates：成功写入缓存，24h 内复用，强制刷新 60s �
   const forced = await checkForUpdates({ ...opts, force: true });
   assert.equal(forced.fromCache, false);
   assert.equal(calls, 2);
+});
+
+test('checkForUpdates：startup 跳过前端缓存并让本地代理强制回源', async () => {
+  const ls = new LSShim();
+  let clock = 1_000_000_000;
+  const urls = [];
+  const fetchImpl = async (url) => {
+    urls.push(String(url));
+    return okResponse([release('v1.0.1')]);
+  };
+  const opts = { currentVersion: '1.0.0', fetchImpl, storage: ls, now: () => clock };
+
+  await checkForUpdates(opts);
+  const startup = await checkForUpdates({ ...opts, startup: true });
+
+  assert.equal(startup.fromCache, false);
+  assert.equal(urls.length, 2);
+  assert.equal(urls[1], `${LOCAL_RELEASES_API}?force=1`);
 });
 
 test('checkForUpdates：403 限流时保留上次缓存结果并标记错误', async () => {

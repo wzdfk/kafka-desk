@@ -3,9 +3,9 @@ import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { NIcon } from 'naive-ui';
 import { CloseOutline, DownloadOutline } from '@vicons/ionicons5';
-import { checkForUpdates, isUpdateAvailable } from '../utils/releases.js';
+import { checkForUpdates, isNetworkAvailable, isUpdateAvailable } from '../utils/releases.js';
 
-/* 应用启动时检查一次；发现新版本则在顶部居中提示，点击直达设置-关于。
+/* 应用启动时联网检查一次；离线直接跳过，发现新版本则顶部居中提示。
  * 检查失败静默处理，避免打扰用户；关闭只影响当前会话，下次启动会再检查。 */
 const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.0.0';
 const router = useRouter();
@@ -14,8 +14,9 @@ const version = ref('');
 let disposed = false;
 
 async function runStartupCheck() {
+  if (!isNetworkAvailable()) return;
   try {
-    const result = await checkForUpdates({ currentVersion: APP_VERSION, force: true });
+    const result = await checkForUpdates({ currentVersion: APP_VERSION, startup: true });
     if (disposed || !isUpdateAvailable(result)) return;
     version.value = result.latest.version;
     visible.value = true;

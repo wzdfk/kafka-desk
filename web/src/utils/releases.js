@@ -148,6 +148,12 @@ export function shouldCheck(cache, now = Date.now(), force = false) {
   return age >= (cache.ok ? SUCCESS_TTL : FAIL_TTL);
 }
 
+/* 启动检查前调用：navigator.onLine 明确为 false 时跳过，避免写失败缓存。 */
+export function isNetworkAvailable(online) {
+  if (typeof online === 'boolean') return online;
+  return typeof navigator === 'undefined' || navigator.onLine !== false;
+}
+
 function defaultStorage() {
   try { return typeof localStorage !== 'undefined' ? localStorage : null; } catch { return null; }
 }
@@ -163,13 +169,15 @@ export function writeCache(data, storage = defaultStorage()) {
   try { if (storage) storage.setItem(storageKeys.updateCheck, JSON.stringify(data)); } catch { /* 隐私模式 */ }
 }
 
-/* 主流程：缓存节流 → 8s 超时请求 → 归一化 → 结果落盘；失败返回上次缓存。 */
+/* 主流程：缓存节流 → 8s 超时请求 → 归一化 → 结果落盘；失败返回上次缓存。
+ * startup=true：跳过前端缓存，并让本地代理强制回源；离线由调用方跳过。 */
 export async function checkForUpdates({
   currentVersion,
   fetchImpl,
   storage = defaultStorage(),
   now = Date.now,
   force = false,
+  startup = false,
   timeout = REQUEST_TIMEOUT,
 } = {}) {
   const doFetch = fetchImpl || (typeof fetch === 'function' ? fetch : null);
@@ -183,12 +191,12 @@ export async function checkForUpdates({
     fromCache: true,
     error: c?.error || null,
   });
-  if (!shouldCheck(cache, now(), force)) return cachedResult(cache);
+  if (!startup && !shouldCheck(cache, now(), force)) return cachedResult(cache);
 
   if (!doFetch) {
     const out = { ok: false, status: 'error', error: 'offline', releases: [], latest: null, checkedAt: now(), fromCache: false };
-    writeCache({ ...out, fromCache: undefined }, storage);
-    return cache ? cachedResult(cache) : out;
+    if (!startup) writeCache({ ...out, fromCache: undefined }, storage);
+    return !startup && cache ? cachedResult(cache) : out;
   }
 
   const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -215,7 +223,8 @@ export async function checkForUpdates({
   try {
     let raw;
     try {
-      raw = await fetchRaw(LOCAL_RELEASES_API, 'application/json');
+      const localUrl = startup ? `${LOCAL_RELEASES_API}?force=1` : LOCAL_RELEASES_API;
+      raw = await fetchRaw(localUrl, 'application/json');
     } catch {
       raw = await fetchRaw(RELEASES_API, 'application/vnd.github+json');
     }
