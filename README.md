@@ -16,11 +16,22 @@
 ## 前端开发（web/）
 
 ```bash
+# 方式1
+npm start
 cd web
 npm install
 npm run dev    # http://localhost:5173，/api 代理到 127.0.0.1:18761（需先启动后端）
 npm test       # node --test 单元测试
+
+# 打包
 npm run build  # 产出 web/dist
+
+# 方式2 
+npm run app
+
+# 打包
+npm run dist
+
 ```
 
 ## 环境变量（server.js / Electron）

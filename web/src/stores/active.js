@@ -41,6 +41,15 @@ function unique(arr) {
   return [...new Set(arr)];
 }
 
+/* Display order only: checked topics first, preserving each group's relative order. */
+export function sortTopicsBySelection(topics, selectedTopics) {
+  const selected = new Set(selectedTopics || []);
+  const pinned = [];
+  const rest = [];
+  for (const topic of topics || []) (selected.has(topic) ? pinned : rest).push(topic);
+  return [...pinned, ...rest];
+}
+
 function clockNow() {
   const d = new Date();
   const p = (n) => String(n).padStart(2, '0');

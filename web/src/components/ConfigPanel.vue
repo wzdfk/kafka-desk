@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { AddOutline, RefreshOutline, SearchOutline } from '@vicons/ionicons5';
 import { TrashOutline } from '@vicons/ionicons5';
 import { NCheckbox, NIcon, NInput, NSelect, NSwitch } from 'naive-ui';
-import { useActiveStore } from '../stores/active.js';
+import { sortTopicsBySelection, useActiveStore } from '../stores/active.js';
 import AccordionSection from './AccordionSection.vue';
 import IconBtn from './IconBtn.vue';
 import RunLogPanel from './RunLogPanel.vue';
@@ -11,6 +11,9 @@ import RunLogPanel from './RunLogPanel.vue';
 /* Left column of the workspace: topic config / misc / run log, each with a
  * persisted collapse state and auto-saved inputs (500ms debounce + dedupe). */
 const store = useActiveStore();
+
+/* Display list: checked topics pinned first, without mutating the shared catalog. */
+const displayTopics = computed(() => sortTopicsBySelection(store.filteredTopics, store.selectedTopics));
 
 /* Send-topic dropdown: catalog ∪ current input (legacy renderSendTopicSelect). */
 const sendOptions = computed(() => {
@@ -24,7 +27,7 @@ const gidMeta = computed(() => {
   return gid ? `消费组 ${gid}` : '消费组自动';
 });
 
-const topicMeta = computed(() => `已选 ${store.selectedTopics.length}`);
+const topicMeta = computed(() => `已订阅主题: ${store.selectedTopics.length}`);
 const logMeta = computed(() => `${store.runLogs.length} 条`);
 
 const refreshBusy = ref(false);
@@ -87,12 +90,12 @@ const saveHintClass = computed(() => ({
           </template>
         </n-input>
         <div class="topic-list">
-          <div v-if="!store.filteredTopics.length" class="topic-empty">
+          <div v-if="!displayTopics.length" class="topic-empty">
             {{ store.catalog.length || store.selectedTopics.length
               ? '没有匹配的主题' : '点击「刷新」读取主题，或在下方手动添加' }}
           </div>
           <label
-            v-for="t in store.filteredTopics"
+            v-for="t in displayTopics"
             :key="t"
             class="topic-row"
             :class="{ 'is-subscribed': (store.server?.subscribedTopics || []).includes(t) }"
