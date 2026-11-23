@@ -1,6 +1,6 @@
 # KafkaDesk · 个人用简易 Kafka 客户端
 
-本地单机 Kafka 收发与订阅调试工具：Express 后端（`server.js`，SSE 推送）+ 双前端并存 —— **旧版** `public/`（原生 JS）与 **新版** `web/`（Vue3 + Naive UI + Pinia，Apple 风格）。
+Kafka 收发与订阅调试工具：Express 后端（`server.js`，SSE 推送）+ 双前端并存 —— **旧版** `public/`（原生 JS）与 **新版** `web/`（Vue3 + Naive UI + Pinia，Apple 风格）。
 
 ## 启动方式
 
